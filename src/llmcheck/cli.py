@@ -27,30 +27,30 @@ def cmd_add(args):
         console.print("\n[yellow]Cancelled.[/yellow]")
 
 def cmd_rm(args):
-    alias = args.alias
-    if not alias:
-        console.print("[red]Error: You must provide an alias to remove.[/red]")
+    identifier = args.identifier
+    if not identifier:
+        console.print("[red]Error: You must provide an ID or alias to remove.[/red]")
         sys.exit(1)
         
-    if remove_model(alias):
-        console.print(f"[green]Successfully removed model '{alias}'.[/green]")
+    if remove_model(identifier):
+        console.print(f"[green]Successfully removed model '{identifier}'.[/green]")
     else:
-        console.print(f"[red]Error: Model with alias '{alias}' not found.[/red]")
+        console.print(f"[red]Error: Model with ID/alias '{identifier}' not found.[/red]")
 
 def cmd_edit(args):
-    alias = args.alias
+    identifier = args.identifier
     models = load_models()
     target_model = None
     for m in models:
-        if m.get("alias", "").lower() == alias.lower():
+        if m.get("_id") == str(identifier) or m.get("alias", "").lower() == str(identifier).lower():
             target_model = m
             break
             
     if not target_model:
-        console.print(f"[red]Error: Model with alias '{alias}' not found.[/red]")
+        console.print(f"[red]Error: Model with ID/alias '{identifier}' not found.[/red]")
         sys.exit(1)
         
-    console.print(f"[bold cyan]Editing model '{alias}' in {CONFIG_FILE}[/bold cyan]")
+    console.print(f"[bold cyan]Editing model '{identifier}' (ID: {target_model.get('_id')}) in {CONFIG_FILE}[/bold cyan]")
     console.print("[dim]Press Enter to keep the current value.[/dim]")
     
     try:
@@ -83,10 +83,10 @@ def cmd_edit(args):
             console.print("[yellow]No changes made.[/yellow]")
             return
             
-        if edit_model(alias, updates):
-            console.print(f"[green]Successfully updated model '{alias}'.[/green]")
+        if edit_model(identifier, updates):
+            console.print(f"[green]Successfully updated model '{identifier}'.[/green]")
         else:
-            console.print(f"[red]Failed to update model '{alias}'.[/red]")
+            console.print(f"[red]Failed to update model '{identifier}'.[/red]")
             
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
@@ -101,12 +101,12 @@ def cmd_check(args):
 
 def cmd_model(args):
     models = load_models()
-    target_alias = args.alias.lower()
+    target = str(args.identifier).lower()
     
-    models_to_check = [m for m in models if m.get("alias", "").lower() == target_alias]
+    models_to_check = [m for m in models if m.get("_id") == target or m.get("alias", "").lower() == target]
     
     if not models_to_check:
-        console.print(f"[yellow]No model found with alias '{args.alias}'. Use 'llmcheck list' to see available models.[/yellow]")
+        console.print(f"[yellow]No model found with ID/alias '{args.identifier}'. Use 'llmcheck list' to see available models.[/yellow]")
         return
         
     run_check(models_to_check)
@@ -121,12 +121,12 @@ def main():
     
     # Rm command
     parser_rm = subparsers.add_parser("rm", help="Remove a model configuration")
-    parser_rm.add_argument("alias", help="The alias of the model to remove")
+    parser_rm.add_argument("identifier", help="The ID or alias of the model to remove")
     parser_rm.set_defaults(func=cmd_rm)
     
     # Edit command
     parser_edit = subparsers.add_parser("edit", help="Edit an existing model configuration")
-    parser_edit.add_argument("alias", help="The alias of the model to edit")
+    parser_edit.add_argument("identifier", help="The ID or alias of the model to edit")
     parser_edit.set_defaults(func=cmd_edit)
     
     # List command
@@ -138,8 +138,8 @@ def main():
     parser_check.set_defaults(func=cmd_check)
     
     # Model command (specific)
-    parser_model = subparsers.add_parser("model", help="Check a specific model by alias")
-    parser_model.add_argument("alias", help="The alias of the model to check")
+    parser_model = subparsers.add_parser("model", help="Check a specific model by ID or alias")
+    parser_model.add_argument("identifier", help="The ID or alias of the model to check")
     parser_model.set_defaults(func=cmd_model)
     
     args = parser.parse_args()

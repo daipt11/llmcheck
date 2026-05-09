@@ -12,6 +12,7 @@ def run_check(models_to_check):
         return
 
     table = Table(title="LLM API Health Check Results")
+    table.add_column("ID", style="bold green", justify="right")
     table.add_column("Alias", style="yellow")
     table.add_column("Name", style="cyan")
     table.add_column("Provider", style="magenta")
@@ -56,7 +57,7 @@ def run_check(models_to_check):
             latency = time.time() - start_time
             latency_str = f"{latency:.2f}" if status == "✅" else "-"
             
-            table.add_row(alias, name, provider, model_name, status, latency_str, error_msg)
+            table.add_row(config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
         
     console.print(table)
 
@@ -66,6 +67,7 @@ def run_list(models):
         return
         
     table = Table(title="Configured Models")
+    table.add_column("ID", style="bold green", justify="right")
     table.add_column("Alias", style="yellow")
     table.add_column("Name", style="cyan")
     table.add_column("Provider", style="magenta")
@@ -74,6 +76,7 @@ def run_list(models):
     
     for m in models:
         table.add_row(
+            m.get("_id", ""),
             m.get("alias", ""),
             m.get("name", ""),
             m.get("provider", ""),

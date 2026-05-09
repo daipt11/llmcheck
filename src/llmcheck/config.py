@@ -62,15 +62,15 @@ def add_model(alias, name, provider, model_name, api_key, base_url=None):
     with open(CONFIG_FILE, "a") as f:
         f.write("\n".join(lines) + "\n")
 
-def remove_model(alias):
-    """Removes a model configuration by alias."""
+def remove_model(identifier):
+    """Removes a model configuration by alias or ID."""
     if not CONFIG_FILE.exists():
         return False
         
     models = load_models()
     target_id = None
     for m in models:
-        if m.get("alias", "").lower() == alias.lower():
+        if m.get("_id") == str(identifier) or m.get("alias", "").lower() == str(identifier).lower():
             target_id = m["_id"]
             break
             
@@ -90,8 +90,8 @@ def remove_model(alias):
                 
     return True
 
-def edit_model(alias, updates):
-    """Edits an existing model configuration by alias. updates is a dict of fields to update."""
+def edit_model(identifier, updates):
+    """Edits an existing model configuration by alias or ID. updates is a dict of fields to update."""
     if not CONFIG_FILE.exists():
         return False
         
@@ -99,7 +99,7 @@ def edit_model(alias, updates):
     target_id = None
     target_model = None
     for m in models:
-        if m.get("alias", "").lower() == alias.lower():
+        if m.get("_id") == str(identifier) or m.get("alias", "").lower() == str(identifier).lower():
             target_id = m["_id"]
             target_model = m
             break
