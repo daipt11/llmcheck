@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from rich.table import Table
 from rich.live import Live
+import queue
 
 console = Console()
 litellm.suppress_debug_info = True
@@ -53,10 +54,13 @@ def check_single_model(config, messages, verbose=False):
     
     return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
 
-def check_provider_models(models, messages, verbose, table):
-    for m in models:
-        row_data = check_single_model(m, messages, verbose)
-        table.add_row(*row_data)
+def check_group(group_models, messages, verbose, result_queue):
+    for m in group_models:
+        try:
+            result = check_single_model(m, messages, verbose)
+        except Exception as e:
+            result = (m.get("_id", ""), m.get("alias", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), "❌", "-", str(e))
+        result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
     if not models_to_check:
@@ -75,19 +79,22 @@ def run_check(models_to_check, verbose=False):
 
     messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
 
-    provider_groups = {}
+    groups = {}
     for m in models_to_check:
-        provider = m.get("provider", "unknown").lower()
-        if provider not in provider_groups:
-            provider_groups[provider] = []
-        provider_groups[provider].append(m)
+        key = str(m.get("base_url") or m.get("provider") or m.get("_id")).strip().lower()
+        groups.setdefault(key, []).append(m)
+
+    result_queue = queue.Queue()
 
     console.print("[bold green]Pinging models...[/bold green]")
     with Live(table, console=console, refresh_per_second=4):
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(check_provider_models, group, messages, verbose, table) for group in provider_groups.values()]
-            for future in as_completed(futures):
-                future.result()
+        with ThreadPoolExecutor(max_workers=max(1, len(groups))) as executor:
+            for key, group_models in groups.items():
+                executor.submit(check_group, group_models, messages, verbose, result_queue)
+                
+            for _ in range(len(models_to_check)):
+                row_data = result_queue.get()
+                table.add_row(*row_data)
 
 def run_list(models):
     if not models:
