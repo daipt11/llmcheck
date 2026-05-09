@@ -1,6 +1,10 @@
 import os
+import logging
 from pathlib import Path
 from dotenv import dotenv_values
+
+# Suppress dotenv parse warnings (e.g., from litellm auto-loading unrelated .env files)
+logging.getLogger('dotenv.main').setLevel(logging.ERROR)
 
 CONFIG_FILE = Path.home() / ".llmcheck_env"
 
