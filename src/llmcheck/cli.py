@@ -14,8 +14,33 @@ def cmd_add(args):
         name = input("Enter Display Name (e.g., OpenAI GPT-4): ").strip()
         provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
         model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
-        api_key = input("Enter API Key (press Enter to skip): ").strip()
-        base_url = input("Enter Base URL (press Enter to skip): ").strip()
+        
+        models = load_models()
+        existing_provider_models = [m for m in models if m.get("provider", "").lower() == provider.lower()]
+        
+        suggested_key = ""
+        suggested_base_url = ""
+        if existing_provider_models:
+            for m in existing_provider_models:
+                if not suggested_key and m.get("api_key"):
+                    suggested_key = m.get("api_key")
+                if not suggested_base_url and m.get("base_url"):
+                    suggested_base_url = m.get("base_url")
+                    
+        if suggested_key:
+            display_key = f"{suggested_key[:4]}...{suggested_key[-4:]}" if len(suggested_key) > 8 else "***"
+            api_key = input(f"Enter API Key [{display_key}]: ").strip()
+            if not api_key:
+                api_key = suggested_key
+        else:
+            api_key = input("Enter API Key (press Enter to skip): ").strip()
+            
+        if suggested_base_url:
+            base_url = input(f"Enter Base URL [{suggested_base_url}]: ").strip()
+            if not base_url:
+                base_url = suggested_base_url
+        else:
+            base_url = input("Enter Base URL (press Enter to skip): ").strip()
         
         if not alias or not name or not provider or not model_name:
             console.print("[red]Error: Alias, Name, Provider, and Model Name are required.[/red]")
