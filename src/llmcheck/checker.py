@@ -19,26 +19,36 @@ def check_single_model(config, messages, verbose=False):
     
     full_model = f"{provider}/{model_name}" if provider else model_name
     
-    start_time = time.time()
     status = "❌"
     error_msg = ""
+    latency = 0
     
-    try:
-        response = litellm.completion(
-            model=full_model,
-            messages=messages,
-            api_key=api_key,
-            api_base=base_url,
-            max_tokens=10, 
-            timeout=15
-        )
-        status = "✅"
-    except Exception as e:
-        error_msg = str(e).strip()
+    for attempt in range(2):
+        start_time = time.time()
+        try:
+            response = litellm.completion(
+                model=full_model,
+                messages=messages,
+                api_key=api_key,
+                api_base=base_url,
+                max_tokens=10, 
+                timeout=15
+            )
+            status = "✅"
+            latency = time.time() - start_time
+            break
+        except Exception as e:
+            error_msg = str(e).strip()
+            latency = time.time() - start_time
+            if attempt == 0:
+                time.sleep(5)
+                
+    if status == "❌":
         if not verbose and len(error_msg) > 100:
             error_msg = error_msg[:97] + "..."
+    else:
+        error_msg = ""
         
-    latency = time.time() - start_time
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
     return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
