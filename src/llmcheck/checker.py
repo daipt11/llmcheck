@@ -53,6 +53,11 @@ def check_single_model(config, messages, verbose=False):
     
     return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
 
+def check_provider_models(models, messages, verbose, table):
+    for m in models:
+        row_data = check_single_model(m, messages, verbose)
+        table.add_row(*row_data)
+
 def run_check(models_to_check, verbose=False):
     if not models_to_check:
         console.print("[yellow]No models found to check.[/yellow]")
@@ -70,13 +75,19 @@ def run_check(models_to_check, verbose=False):
 
     messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
 
+    provider_groups = {}
+    for m in models_to_check:
+        provider = m.get("provider", "unknown").lower()
+        if provider not in provider_groups:
+            provider_groups[provider] = []
+        provider_groups[provider].append(m)
+
     console.print("[bold green]Pinging models...[/bold green]")
     with Live(table, console=console, refresh_per_second=4):
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(check_single_model, m, messages, verbose) for m in models_to_check]
+            futures = [executor.submit(check_provider_models, group, messages, verbose, table) for group in provider_groups.values()]
             for future in as_completed(futures):
-                row_data = future.result()
-                table.add_row(*row_data)
+                future.result()
 
 def run_list(models):
     if not models:
