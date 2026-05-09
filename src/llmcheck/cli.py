@@ -129,7 +129,7 @@ def cmd_list(args):
 
 def cmd_check(args):
     models = load_models()
-    run_check(models)
+    run_check(models, verbose=args.verbose)
 
 def cmd_model(args):
     models = load_models()
@@ -141,7 +141,7 @@ def cmd_model(args):
         console.print(f"[yellow]No models found with IDs/aliases: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
         return
         
-    run_check(models_to_check)
+    run_check(models_to_check, verbose=args.verbose)
 
 def main():
     parser = argparse.ArgumentParser(description="LLM API Health Check CLI")
@@ -168,11 +168,13 @@ def main():
     
     # Check command (all)
     parser_check = subparsers.add_parser("check", help="Check all configured models")
+    parser_check.add_argument("-v", "--verbose", action="store_true", help="Show detailed error messages without truncation")
     parser_check.set_defaults(func=cmd_check)
     
     # Model command (specific)
     parser_model = subparsers.add_parser("model", help="Check specific models by ID or alias")
     parser_model.add_argument("identifiers", nargs="+", help="The IDs or aliases of the models to check")
+    parser_model.add_argument("-v", "--verbose", action="store_true", help="Show detailed error messages without truncation")
     parser_model.set_defaults(func=cmd_model)
     
     args = parser.parse_args()

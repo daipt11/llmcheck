@@ -9,7 +9,7 @@ console = Console()
 litellm.suppress_debug_info = True
 litellm.drop_params = True
 
-def check_single_model(config, messages):
+def check_single_model(config, messages, verbose=False):
     alias = config.get("alias", "")
     name = config.get("name", "Unknown")
     provider = config.get("provider", "")
@@ -35,7 +35,7 @@ def check_single_model(config, messages):
         status = "✅"
     except Exception as e:
         error_msg = str(e).strip()
-        if len(error_msg) > 100:
+        if not verbose and len(error_msg) > 100:
             error_msg = error_msg[:97] + "..."
         
     latency = time.time() - start_time
@@ -43,7 +43,7 @@ def check_single_model(config, messages):
     
     return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
 
-def run_check(models_to_check):
+def run_check(models_to_check, verbose=False):
     if not models_to_check:
         console.print("[yellow]No models found to check.[/yellow]")
         return
@@ -56,14 +56,14 @@ def run_check(models_to_check):
     table.add_column("Model", style="blue")
     table.add_column("Status", justify="center")
     table.add_column("Latency (s)", justify="right")
-    table.add_column("Error", style="red", max_width=40)
+    table.add_column("Error", style="red", max_width=None if verbose else 40)
 
     messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
 
     console.print("[bold green]Pinging models...[/bold green]")
     with Live(table, console=console, refresh_per_second=4):
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(check_single_model, m, messages) for m in models_to_check]
+            futures = [executor.submit(check_single_model, m, messages, verbose) for m in models_to_check]
             for future in as_completed(futures):
                 row_data = future.result()
                 table.add_row(*row_data)
