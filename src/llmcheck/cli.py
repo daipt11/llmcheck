@@ -118,6 +118,13 @@ def cmd_edit(args):
 
 def cmd_list(args):
     models = load_models()
+    provider = args.provider
+    if provider:
+        models = [m for m in models if m.get("provider", "").lower() == provider.lower()]
+        if not models:
+            console.print(f"[yellow]No models found for provider '{provider}'.[/yellow]")
+            return
+            
     run_list(models)
 
 def cmd_check(args):
@@ -155,7 +162,8 @@ def main():
     parser_edit.set_defaults(func=cmd_edit)
     
     # List command
-    parser_list = subparsers.add_parser("list", help="List all configured models")
+    parser_list = subparsers.add_parser("list", help="List all configured models (optionally filtered by provider)")
+    parser_list.add_argument("provider", nargs="?", help="Optional provider name to filter by (e.g., openai)")
     parser_list.set_defaults(func=cmd_list)
     
     # Check command (all)
