@@ -3,6 +3,7 @@ import litellm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from rich.table import Table
+from rich.live import Live
 
 console = Console()
 litellm.suppress_debug_info = True
@@ -59,21 +60,13 @@ def run_check(models_to_check):
 
     messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
 
-    with console.status("[bold green]Pinging models...[/bold green]"):
-        results_map = {}
+    console.print("[bold green]Pinging models...[/bold green]")
+    with Live(table, console=console, refresh_per_second=4):
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {executor.submit(check_single_model, m, messages): m for m in models_to_check}
+            futures = [executor.submit(check_single_model, m, messages) for m in models_to_check]
             for future in as_completed(futures):
-                m = futures[future]
-                results_map[m.get("_id", "")] = future.result()
-                
-        # Add to table in original order
-        for m in models_to_check:
-            row_data = results_map.get(m.get("_id", ""))
-            if row_data:
+                row_data = future.result()
                 table.add_row(*row_data)
-        
-    console.print(table)
 
 def run_list(models):
     if not models:
