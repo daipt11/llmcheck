@@ -101,12 +101,12 @@ def cmd_check(args):
 
 def cmd_model(args):
     models = load_models()
-    target = str(args.identifier).lower()
+    targets = [str(t).lower() for t in args.identifiers]
     
-    models_to_check = [m for m in models if m.get("_id") == target or m.get("alias", "").lower() == target]
+    models_to_check = [m for m in models if m.get("_id") in targets or m.get("alias", "").lower() in targets]
     
     if not models_to_check:
-        console.print(f"[yellow]No model found with ID/alias '{args.identifier}'. Use 'llmcheck list' to see available models.[/yellow]")
+        console.print(f"[yellow]No models found with IDs/aliases: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
         return
         
     run_check(models_to_check)
@@ -138,8 +138,8 @@ def main():
     parser_check.set_defaults(func=cmd_check)
     
     # Model command (specific)
-    parser_model = subparsers.add_parser("model", help="Check a specific model by ID or alias")
-    parser_model.add_argument("identifier", help="The ID or alias of the model to check")
+    parser_model = subparsers.add_parser("model", help="Check specific models by ID or alias")
+    parser_model.add_argument("identifiers", nargs="+", help="The IDs or aliases of the models to check")
     parser_model.set_defaults(func=cmd_model)
     
     args = parser.parse_args()

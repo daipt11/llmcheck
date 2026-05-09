@@ -1,10 +1,46 @@
 import time
 import litellm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
 litellm.suppress_debug_info = True
+litellm.drop_params = True
+
+def check_single_model(config, messages):
+    alias = config.get("alias", "")
+    name = config.get("name", "Unknown")
+    provider = config.get("provider", "")
+    model_name = config.get("model", "")
+    api_key = config.get("api_key", None)
+    base_url = config.get("base_url", None)
+    
+    full_model = f"{provider}/{model_name}" if provider else model_name
+    
+    start_time = time.time()
+    status = "❌"
+    error_msg = ""
+    
+    try:
+        response = litellm.completion(
+            model=full_model,
+            messages=messages,
+            api_key=api_key,
+            api_base=base_url,
+            max_tokens=10, 
+            timeout=15
+        )
+        status = "✅"
+    except Exception as e:
+        error_msg = str(e).strip()
+        if len(error_msg) > 100:
+            error_msg = error_msg[:97] + "..."
+        
+    latency = time.time() - start_time
+    latency_str = f"{latency:.2f}" if status == "✅" else "-"
+    
+    return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
 
 def run_check(models_to_check):
     if not models_to_check:
@@ -24,40 +60,18 @@ def run_check(models_to_check):
     messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
 
     with console.status("[bold green]Pinging models...[/bold green]"):
-        for config in models_to_check:
-            alias = config.get("alias", "")
-            name = config.get("name", "Unknown")
-            provider = config.get("provider", "")
-            model_name = config.get("model", "")
-            api_key = config.get("api_key", None)
-            base_url = config.get("base_url", None)
-            
-            full_model = f"{provider}/{model_name}" if provider else model_name
-            
-            start_time = time.time()
-            status = "❌"
-            error_msg = ""
-            
-            try:
-                litellm.drop_params = True
-                response = litellm.completion(
-                    model=full_model,
-                    messages=messages,
-                    api_key=api_key,
-                    api_base=base_url,
-                    max_tokens=10, 
-                    timeout=15
-                )
-                status = "✅"
-            except Exception as e:
-                error_msg = str(e).strip()
-                if len(error_msg) > 100:
-                    error_msg = error_msg[:97] + "..."
+        results_map = {}
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(check_single_model, m, messages): m for m in models_to_check}
+            for future in as_completed(futures):
+                m = futures[future]
+                results_map[m.get("_id", "")] = future.result()
                 
-            latency = time.time() - start_time
-            latency_str = f"{latency:.2f}" if status == "✅" else "-"
-            
-            table.add_row(config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
+        # Add to table in original order
+        for m in models_to_check:
+            row_data = results_map.get(m.get("_id", ""))
+            if row_data:
+                table.add_row(*row_data)
         
     console.print(table)
 
