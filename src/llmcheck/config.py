@@ -89,3 +89,53 @@ def remove_model(alias):
                 f.write(line)
                 
     return True
+
+def edit_model(alias, updates):
+    """Edits an existing model configuration by alias. updates is a dict of fields to update."""
+    if not CONFIG_FILE.exists():
+        return False
+        
+    models = load_models()
+    target_id = None
+    target_model = None
+    for m in models:
+        if m.get("alias", "").lower() == alias.lower():
+            target_id = m["_id"]
+            target_model = m
+            break
+            
+    if not target_id:
+        return False
+        
+    prefix = f"MODEL_{target_id}_"
+    
+    for k, v in updates.items():
+        target_model[k] = v
+            
+    with open(CONFIG_FILE, "r") as f:
+        lines = f.readlines()
+        
+    new_lines = []
+    block_inserted = False
+    
+    for line in lines:
+        if line.strip().startswith(prefix):
+            if not block_inserted:
+                new_block = [
+                    f'{prefix}ALIAS="{target_model.get("alias", "")}"\n',
+                    f'{prefix}NAME="{target_model.get("name", "")}"\n',
+                    f'{prefix}PROVIDER="{target_model.get("provider", "")}"\n',
+                    f'{prefix}MODEL="{target_model.get("model", "")}"\n',
+                    f'{prefix}API_KEY="{target_model.get("api_key", "")}"\n',
+                ]
+                if target_model.get("base_url"):
+                    new_block.append(f'{prefix}BASE_URL="{target_model["base_url"]}"\n')
+                new_lines.extend(new_block)
+                block_inserted = True
+        else:
+            new_lines.append(line)
+            
+    with open(CONFIG_FILE, "w") as f:
+        f.writelines(new_lines)
+        
+    return True

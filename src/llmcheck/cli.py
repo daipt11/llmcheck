@@ -2,7 +2,7 @@ import argparse
 import sys
 from rich.console import Console
 
-from .config import load_models, add_model, remove_model, CONFIG_FILE
+from .config import load_models, add_model, remove_model, edit_model, CONFIG_FILE
 from .checker import run_check, run_list
 
 console = Console()
@@ -37,6 +37,60 @@ def cmd_rm(args):
     else:
         console.print(f"[red]Error: Model with alias '{alias}' not found.[/red]")
 
+def cmd_edit(args):
+    alias = args.alias
+    models = load_models()
+    target_model = None
+    for m in models:
+        if m.get("alias", "").lower() == alias.lower():
+            target_model = m
+            break
+            
+    if not target_model:
+        console.print(f"[red]Error: Model with alias '{alias}' not found.[/red]")
+        sys.exit(1)
+        
+    console.print(f"[bold cyan]Editing model '{alias}' in {CONFIG_FILE}[/bold cyan]")
+    console.print("[dim]Press Enter to keep the current value.[/dim]")
+    
+    try:
+        new_alias = input(f"Enter Alias [{target_model.get('alias', '')}]: ").strip()
+        name = input(f"Enter Display Name [{target_model.get('name', '')}]: ").strip()
+        provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
+        model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
+        
+        # Mask API key for display
+        current_key = target_model.get('api_key', '')
+        display_key = f"{current_key[:4]}...{current_key[-4:]}" if len(current_key) > 8 else "***" if current_key else "None"
+        api_key = input(f"Enter API Key [{display_key}]: ").strip()
+        
+        current_base_url = target_model.get('base_url', '')
+        base_url = input(f"Enter Base URL (type 'none' to clear) [{current_base_url}]: ").strip()
+        
+        updates = {}
+        if new_alias: updates['alias'] = new_alias
+        if name: updates['name'] = name
+        if provider: updates['provider'] = provider
+        if model_name: updates['model'] = model_name
+        if api_key: updates['api_key'] = api_key
+        if base_url:
+            if base_url.lower() == 'none':
+                updates['base_url'] = ""
+            else:
+                updates['base_url'] = base_url
+                
+        if not updates:
+            console.print("[yellow]No changes made.[/yellow]")
+            return
+            
+        if edit_model(alias, updates):
+            console.print(f"[green]Successfully updated model '{alias}'.[/green]")
+        else:
+            console.print(f"[red]Failed to update model '{alias}'.[/red]")
+            
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Cancelled.[/yellow]")
+
 def cmd_list(args):
     models = load_models()
     run_list(models)
@@ -69,6 +123,11 @@ def main():
     parser_rm = subparsers.add_parser("rm", help="Remove a model configuration")
     parser_rm.add_argument("alias", help="The alias of the model to remove")
     parser_rm.set_defaults(func=cmd_rm)
+    
+    # Edit command
+    parser_edit = subparsers.add_parser("edit", help="Edit an existing model configuration")
+    parser_edit.add_argument("alias", help="The alias of the model to edit")
+    parser_edit.set_defaults(func=cmd_edit)
     
     # List command
     parser_list = subparsers.add_parser("list", help="List all configured models")
