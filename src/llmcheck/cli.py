@@ -1,11 +1,58 @@
 import argparse
 import sys
 from rich.console import Console
+from rich.prompt import Prompt
 
 from .config import load_models, add_model, remove_model, edit_model, CONFIG_FILE
 from .checker import run_check, run_list
 
 console = Console()
+
+def prompt_category(default_val=None):
+    categories = [
+        ("Reasoning", "Strong Reasoning", "Suy luận, logic, toán học, task phức tạp"),
+        ("General", "General Purpose", "Đa năng, chat, công việc thông thường"),
+        ("Coding", "Coding & Programming", "Viết code, debug, lập trình"),
+        ("Agent", "Agent & Tool Use", "Agent, tool calling, search, workflow"),
+        ("Fast", "Fast & Lite", "Tốc độ cao, chi phí thấp, volume lớn"),
+        ("Vision", "Vision & Multimodal", "Xử lý hình ảnh, vision"),
+        ("Custom", "Thêm mới...", "")
+    ]
+    
+    console.print("\n[bold cyan]Select Category:[/bold cyan]")
+    for i, (cat, name, desc) in enumerate(categories, 1):
+        if desc:
+            console.print(f"  [green]{i}.[/green] [bold]{cat}[/bold] ({name}) - {desc}")
+        else:
+            console.print(f"  [green]{i}.[/green] [bold]{cat}[/bold] - {name}")
+            
+    choices = [str(i) for i in range(1, len(categories) + 1)]
+    default_idx = None
+    
+    if default_val:
+        for i, (cat, _, _) in enumerate(categories[:-1], 1):
+            if cat.lower() == default_val.lower():
+                default_idx = str(i)
+                break
+        if not default_idx:
+            default_idx = str(len(categories)) # Custom
+            
+    prompt_kwargs = {"choices": choices, "show_choices": False}
+    if default_idx:
+        prompt_kwargs["default"] = default_idx
+        
+    choice = Prompt.ask("Enter your choice", **prompt_kwargs)
+    idx = int(choice) - 1
+    
+    if idx == len(categories) - 1: # Custom
+        prompt_str = f"Enter Custom Category"
+        if default_val:
+            prompt_str += f" [{default_val}]"
+        prompt_str += ": "
+        custom_val = input(prompt_str).strip()
+        return custom_val if custom_val else (default_val if default_val else "")
+    else:
+        return categories[idx][0].lower()
 
 def cmd_add(args):
     console.print(f"[bold cyan]Adding a new model to {CONFIG_FILE}[/bold cyan]")
@@ -15,7 +62,7 @@ def cmd_add(args):
         provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
         model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
         supplier = input("Enter Supplier (e.g., azure, groq) [optional]: ").strip()
-        category = input("Enter Category (e.g., reasoning, chat) [optional]: ").strip()
+        category = prompt_category()
         
         models = load_models()
         existing_models = [m for m in models if m.get("supplier", "").lower() == supplier.lower()] if supplier else []
@@ -87,7 +134,10 @@ def cmd_edit(args):
         provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
         model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
         supplier = input(f"Enter Supplier [{target_model.get('supplier', '')}]: ").strip()
-        category = input(f"Enter Category [{target_model.get('category', '')}]: ").strip()
+        
+        current_category = target_model.get('category', '')
+        new_category = prompt_category(current_category)
+        category = new_category if new_category != current_category else ""
         
         # Mask API key for display
         current_key = target_model.get('api_key', '')
