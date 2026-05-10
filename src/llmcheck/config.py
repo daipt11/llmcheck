@@ -30,7 +30,7 @@ def load_models():
         sorted_models.append(models[idx])
     return sorted_models
 
-def add_model(alias, name, provider, model_name, api_key, base_url=None, supplier=None, category=None):
+def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, category=None):
     """Adds a new model configuration."""
     models = load_models()
     
@@ -47,10 +47,8 @@ def add_model(alias, name, provider, model_name, api_key, base_url=None, supplie
     next_id = max_id + 1
     prefix = f"MODEL_{next_id}_"
     
-    lines = [
         f"",
         f"# Model Configuration for {name}",
-        f'{prefix}ALIAS="{alias}"',
         f'{prefix}NAME="{name}"',
         f'{prefix}PROVIDER="{provider}"',
         f'{prefix}MODEL="{model_name}"',
@@ -126,7 +124,6 @@ def edit_model(identifier, updates):
         if line.strip().startswith(prefix):
             if not block_inserted:
                 new_block = [
-                    f'{prefix}ALIAS="{target_model.get("alias", "")}"\n',
                     f'{prefix}NAME="{target_model.get("name", "")}"\n',
                     f'{prefix}PROVIDER="{target_model.get("provider", "")}"\n',
                     f'{prefix}MODEL="{target_model.get("model", "")}"\n',

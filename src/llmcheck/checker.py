@@ -11,7 +11,6 @@ litellm.suppress_debug_info = True
 litellm.drop_params = True
 
 def check_single_model(config, messages, verbose=False):
-    alias = config.get("alias", "")
     name = config.get("name", "Unknown")
     provider = config.get("provider", "")
     model_name = config.get("model", "")
@@ -54,14 +53,14 @@ def check_single_model(config, messages, verbose=False):
         
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
-    return (config.get("_id", ""), alias, name, provider, model_name, supplier, category, status, latency_str, error_msg)
+    return (config.get("_id", ""), name, provider, model_name, supplier, category, status, latency_str, error_msg)
 
 def check_group(group_models, messages, verbose, result_queue):
     for m in group_models:
         try:
             result = check_single_model(m, messages, verbose)
         except Exception as e:
-            result = (m.get("_id", ""), m.get("alias", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), m.get("supplier", ""), m.get("category", ""), "❌", "-", str(e))
+            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), m.get("supplier", ""), m.get("category", ""), "❌", "-", str(e))
         result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
@@ -71,12 +70,11 @@ def run_check(models_to_check, verbose=False):
 
     table = Table(title="LLM API Health Check Results")
     table.add_column("ID", style="bold green", justify="right")
-    table.add_column("Alias", style="yellow")
     table.add_column("Name", style="cyan")
+    table.add_column("Category", style="yellow")
+    table.add_column("Supplier", style="cyan")
     table.add_column("Provider", style="magenta")
     table.add_column("Model", style="blue")
-    table.add_column("Supplier", style="cyan")
-    table.add_column("Category", style="yellow")
     table.add_column("Status", justify="center")
     table.add_column("Latency (s)", justify="right")
     table.add_column("Error", style="red", max_width=None if verbose else 40)

@@ -57,7 +57,6 @@ def prompt_category(default_val=None):
 def cmd_add(args):
     console.print(f"[bold cyan]Adding a new model to {CONFIG_FILE}[/bold cyan]")
     try:
-        alias = input("Enter Alias (e.g., my-gpt4): ").strip()
         name = input("Enter Display Name (e.g., OpenAI GPT-4): ").strip()
         provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
         model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
@@ -92,25 +91,25 @@ def cmd_add(args):
         else:
             base_url = input("Enter Base URL (press Enter to skip): ").strip()
         
-        if not alias or not name or not provider or not model_name:
-            console.print("[red]Error: Alias, Name, Provider, and Model Name are required.[/red]")
+        if not name or not provider or not model_name:
+            console.print("[red]Error: Name, Provider, and Model Name are required.[/red]")
             sys.exit(1)
             
-        add_model(alias, name, provider, model_name, api_key, base_url, supplier, category)
-        console.print(f"[green]Successfully added model '{alias}'.[/green]")
+        add_model(name, provider, model_name, api_key, base_url, supplier, category)
+        console.print(f"[green]Successfully added model '{name}'.[/green]")
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
 
 def cmd_rm(args):
     identifier = args.identifier
     if not identifier:
-        console.print("[red]Error: You must provide an ID or alias to remove.[/red]")
+        console.print("[red]Error: You must provide an ID to remove.[/red]")
         sys.exit(1)
         
     if remove_model(identifier):
         console.print(f"[green]Successfully removed model '{identifier}'.[/green]")
     else:
-        console.print(f"[red]Error: Model with ID/alias '{identifier}' not found.[/red]")
+        console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
 
 def cmd_edit(args):
     identifier = args.identifier
@@ -122,14 +121,13 @@ def cmd_edit(args):
             break
             
     if not target_model:
-        console.print(f"[red]Error: Model with ID/alias '{identifier}' not found.[/red]")
+        console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
         sys.exit(1)
         
-    console.print(f"[bold cyan]Editing model '{identifier}' (ID: {target_model.get('_id')}) in {CONFIG_FILE}[/bold cyan]")
+    console.print(f"[bold cyan]Editing model '{identifier}' in {CONFIG_FILE}[/bold cyan]")
     console.print("[dim]Press Enter to keep the current value.[/dim]")
     
     try:
-        new_alias = input(f"Enter Alias [{target_model.get('alias', '')}]: ").strip()
         name = input(f"Enter Display Name [{target_model.get('name', '')}]: ").strip()
         provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
         model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
@@ -148,7 +146,6 @@ def cmd_edit(args):
         base_url = input(f"Enter Base URL (type 'none' to clear) [{current_base_url}]: ").strip()
         
         updates = {}
-        if new_alias: updates['alias'] = new_alias
         if name: updates['name'] = name
         if provider: updates['provider'] = provider
         if model_name: updates['model'] = model_name
@@ -200,7 +197,7 @@ def cmd_model(args):
     models_to_check = [m for m in models if m.get("_id") in targets or m.get("alias", "").lower() in targets]
     
     if not models_to_check:
-        console.print(f"[yellow]No models found with IDs/aliases: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
+        console.print(f"[yellow]No models found with IDs: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
         return
         
     run_check(models_to_check, verbose=args.verbose)
@@ -215,12 +212,12 @@ def main():
     
     # Rm command
     parser_rm = subparsers.add_parser("rm", help="Remove a model configuration")
-    parser_rm.add_argument("identifier", help="The ID or alias of the model to remove")
+    parser_rm.add_argument("identifier", help="The ID of the model to remove")
     parser_rm.set_defaults(func=cmd_rm)
     
     # Edit command
     parser_edit = subparsers.add_parser("edit", help="Edit an existing model configuration")
-    parser_edit.add_argument("identifier", help="The ID or alias of the model to edit")
+    parser_edit.add_argument("identifier", help="The ID of the model to edit")
     parser_edit.set_defaults(func=cmd_edit)
     
     # List command
@@ -236,8 +233,8 @@ def main():
     parser_check.set_defaults(func=cmd_check)
     
     # Model command (specific)
-    parser_model = subparsers.add_parser("model", help="Check specific models by ID or alias")
-    parser_model.add_argument("identifiers", nargs="+", help="The IDs or aliases of the models to check")
+    parser_model = subparsers.add_parser("model", help="Check specific models by ID")
+    parser_model.add_argument("identifiers", nargs="+", help="The IDs of the models to check")
     parser_model.add_argument("-v", "--verbose", action="store_true", help="Show detailed error messages without truncation")
     parser_model.set_defaults(func=cmd_model)
     
