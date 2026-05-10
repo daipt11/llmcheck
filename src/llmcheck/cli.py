@@ -175,9 +175,9 @@ def main():
     
     # List command
     parser_list = subparsers.add_parser("list", help="List all configured models")
-    parser_list.add_argument("--provider", help="Optional provider name to filter by (e.g., openai)")
-    parser_list.add_argument("--supplier", help="Optional supplier name to filter by")
-    parser_list.add_argument("--category", help="Optional category name to filter by")
+    parser_list.add_argument("-p", "--provider", help="Optional provider name to filter by (e.g., openai)")
+    parser_list.add_argument("-s", "--supplier", help="Optional supplier name to filter by")
+    parser_list.add_argument("-c", "--category", help="Optional category name to filter by")
     parser_list.set_defaults(func=cmd_list)
     
     # Check command (all)

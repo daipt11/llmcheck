@@ -107,23 +107,21 @@ def run_list(models):
         
     table = Table(title="Configured Models")
     table.add_column("ID", style="bold green", justify="right")
-    table.add_column("Alias", style="yellow")
     table.add_column("Name", style="cyan")
+    table.add_column("Category", style="yellow")
+    table.add_column("Supplier", style="cyan")
     table.add_column("Provider", style="magenta")
     table.add_column("Model", style="blue")
-    table.add_column("Supplier", style="cyan")
-    table.add_column("Category", style="yellow")
     table.add_column("Base URL", style="green")
     
     for m in models:
         table.add_row(
             m.get("_id", ""),
-            m.get("alias", ""),
             m.get("name", ""),
+            m.get("category", ""),
+            m.get("supplier", ""),
             m.get("provider", ""),
             m.get("model", ""),
-            m.get("supplier", ""),
-            m.get("category", ""),
             m.get("base_url", "-")
         )
         
