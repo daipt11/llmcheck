@@ -116,7 +116,7 @@ def cmd_edit(args):
     models = load_models()
     target_model = None
     for m in models:
-        if m.get("_id") == str(identifier) or m.get("alias", "").lower() == str(identifier).lower():
+        if m.get("_id") == str(identifier):
             target_model = m
             break
             
@@ -194,7 +194,7 @@ def cmd_model(args):
     models = load_models()
     targets = [str(t).lower() for t in args.identifiers]
     
-    models_to_check = [m for m in models if m.get("_id") in targets or m.get("alias", "").lower() in targets]
+    models_to_check = [m for m in models if m.get("_id") in targets]
     
     if not models_to_check:
         console.print(f"[yellow]No models found with IDs: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
