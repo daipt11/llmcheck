@@ -15,6 +15,8 @@ def check_single_model(config, messages, verbose=False):
     name = config.get("name", "Unknown")
     provider = config.get("provider", "")
     model_name = config.get("model", "")
+    supplier = config.get("supplier", "")
+    category = config.get("category", "")
     api_key = config.get("api_key", None)
     base_url = config.get("base_url", None)
     
@@ -52,14 +54,14 @@ def check_single_model(config, messages, verbose=False):
         
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
-    return (config.get("_id", ""), alias, name, provider, model_name, status, latency_str, error_msg)
+    return (config.get("_id", ""), alias, name, provider, model_name, supplier, category, status, latency_str, error_msg)
 
 def check_group(group_models, messages, verbose, result_queue):
     for m in group_models:
         try:
             result = check_single_model(m, messages, verbose)
         except Exception as e:
-            result = (m.get("_id", ""), m.get("alias", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), "❌", "-", str(e))
+            result = (m.get("_id", ""), m.get("alias", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), m.get("supplier", ""), m.get("category", ""), "❌", "-", str(e))
         result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
@@ -73,6 +75,8 @@ def run_check(models_to_check, verbose=False):
     table.add_column("Name", style="cyan")
     table.add_column("Provider", style="magenta")
     table.add_column("Model", style="blue")
+    table.add_column("Supplier", style="cyan")
+    table.add_column("Category", style="yellow")
     table.add_column("Status", justify="center")
     table.add_column("Latency (s)", justify="right")
     table.add_column("Error", style="red", max_width=None if verbose else 40)
@@ -81,7 +85,7 @@ def run_check(models_to_check, verbose=False):
 
     groups = {}
     for m in models_to_check:
-        key = str(m.get("base_url") or m.get("provider") or m.get("_id")).strip().lower()
+        key = str(m.get("supplier") or m.get("provider") or m.get("_id")).strip().lower()
         groups.setdefault(key, []).append(m)
 
     result_queue = queue.Queue()
@@ -107,6 +111,8 @@ def run_list(models):
     table.add_column("Name", style="cyan")
     table.add_column("Provider", style="magenta")
     table.add_column("Model", style="blue")
+    table.add_column("Supplier", style="cyan")
+    table.add_column("Category", style="yellow")
     table.add_column("Base URL", style="green")
     
     for m in models:
@@ -116,6 +122,8 @@ def run_list(models):
             m.get("name", ""),
             m.get("provider", ""),
             m.get("model", ""),
+            m.get("supplier", ""),
+            m.get("category", ""),
             m.get("base_url", "-")
         )
         

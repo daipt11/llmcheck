@@ -14,18 +14,21 @@ def cmd_add(args):
         name = input("Enter Display Name (e.g., OpenAI GPT-4): ").strip()
         provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
         model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
+        supplier = input("Enter Supplier (e.g., azure, groq) [optional]: ").strip()
+        category = input("Enter Category (e.g., reasoning, chat) [optional]: ").strip()
         
         models = load_models()
-        existing_provider_models = [m for m in models if m.get("provider", "").lower() == provider.lower()]
+        existing_models = [m for m in models if m.get("supplier", "").lower() == supplier.lower()] if supplier else []
+        if not existing_models:
+            existing_models = [m for m in models if m.get("provider", "").lower() == provider.lower()]
         
         suggested_key = ""
         suggested_base_url = ""
-        if existing_provider_models:
-            for m in existing_provider_models:
-                if not suggested_key and m.get("api_key"):
-                    suggested_key = m.get("api_key")
-                if not suggested_base_url and m.get("base_url"):
-                    suggested_base_url = m.get("base_url")
+        for m in existing_models:
+            if not suggested_key and m.get("api_key"):
+                suggested_key = m.get("api_key")
+            if not suggested_base_url and m.get("base_url"):
+                suggested_base_url = m.get("base_url")
                     
         if suggested_key:
             display_key = f"{suggested_key[:4]}...{suggested_key[-4:]}" if len(suggested_key) > 8 else "***"
@@ -46,7 +49,7 @@ def cmd_add(args):
             console.print("[red]Error: Alias, Name, Provider, and Model Name are required.[/red]")
             sys.exit(1)
             
-        add_model(alias, name, provider, model_name, api_key, base_url)
+        add_model(alias, name, provider, model_name, api_key, base_url, supplier, category)
         console.print(f"[green]Successfully added model '{alias}'.[/green]")
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
@@ -83,6 +86,8 @@ def cmd_edit(args):
         name = input(f"Enter Display Name [{target_model.get('name', '')}]: ").strip()
         provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
         model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
+        supplier = input(f"Enter Supplier [{target_model.get('supplier', '')}]: ").strip()
+        category = input(f"Enter Category [{target_model.get('category', '')}]: ").strip()
         
         # Mask API key for display
         current_key = target_model.get('api_key', '')
@@ -97,6 +102,8 @@ def cmd_edit(args):
         if name: updates['name'] = name
         if provider: updates['provider'] = provider
         if model_name: updates['model'] = model_name
+        if supplier: updates['supplier'] = supplier
+        if category: updates['category'] = category
         if api_key: updates['api_key'] = api_key
         if base_url:
             if base_url.lower() == 'none':
@@ -118,12 +125,17 @@ def cmd_edit(args):
 
 def cmd_list(args):
     models = load_models()
-    provider = args.provider
-    if provider:
-        models = [m for m in models if m.get("provider", "").lower() == provider.lower()]
-        if not models:
-            console.print(f"[yellow]No models found for provider '{provider}'.[/yellow]")
-            return
+    
+    if args.provider:
+        models = [m for m in models if m.get("provider", "").lower() == args.provider.lower()]
+    if args.supplier:
+        models = [m for m in models if m.get("supplier", "").lower() == args.supplier.lower()]
+    if args.category:
+        models = [m for m in models if m.get("category", "").lower() == args.category.lower()]
+        
+    if not models:
+        console.print("[yellow]No models found matching the criteria.[/yellow]")
+        return
             
     run_list(models)
 
@@ -162,8 +174,10 @@ def main():
     parser_edit.set_defaults(func=cmd_edit)
     
     # List command
-    parser_list = subparsers.add_parser("list", help="List all configured models (optionally filtered by provider)")
-    parser_list.add_argument("provider", nargs="?", help="Optional provider name to filter by (e.g., openai)")
+    parser_list = subparsers.add_parser("list", help="List all configured models")
+    parser_list.add_argument("--provider", help="Optional provider name to filter by (e.g., openai)")
+    parser_list.add_argument("--supplier", help="Optional supplier name to filter by")
+    parser_list.add_argument("--category", help="Optional category name to filter by")
     parser_list.set_defaults(func=cmd_list)
     
     # Check command (all)
