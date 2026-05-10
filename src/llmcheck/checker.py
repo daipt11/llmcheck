@@ -15,7 +15,7 @@ def check_single_model(config, messages, verbose=False):
     provider = config.get("provider", "")
     model_name = config.get("model", "")
     supplier = config.get("supplier", "")
-    category = config.get("category", "")
+    tags = config.get("tags", "")
     api_key = config.get("api_key", None)
     base_url = config.get("base_url", None)
     
@@ -61,7 +61,7 @@ def check_single_model(config, messages, verbose=False):
 
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
-    return (config.get("_id", ""), name, category, supplier, provider, display_key, model_name, status, latency_str, error_msg)
+    return (config.get("_id", ""), name, tags, supplier, provider, display_key, model_name, status, latency_str, error_msg)
 
 def check_group(group_models, messages, verbose, result_queue):
     for m in group_models:
@@ -76,7 +76,7 @@ def check_group(group_models, messages, verbose, result_queue):
                     display_key = f"{api_key[:4]}...{api_key[-4:]}"
                 else:
                     display_key = "***"
-            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("category", ""), m.get("supplier", ""), m.get("provider", ""), display_key, m.get("model", ""), "❌", "-", str(e))
+            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("tags", ""), m.get("supplier", ""), m.get("provider", ""), display_key, m.get("model", ""), "❌", "-", str(e))
         result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
@@ -87,7 +87,7 @@ def run_check(models_to_check, verbose=False):
     table = Table(title="LLM API Health Check Results")
     table.add_column("ID", style="bold green", justify="right")
     table.add_column("Name", style="cyan")
-    table.add_column("Category", style="yellow")
+    table.add_column("Tags", style="yellow")
     table.add_column("Supplier", style="cyan")
     table.add_column("Provider/Compatible", style="magenta")
     table.add_column("API Key", style="dim")
@@ -123,7 +123,7 @@ def run_list(models):
     table = Table(title="Configured Models")
     table.add_column("ID", style="bold green", justify="right")
     table.add_column("Name", style="cyan")
-    table.add_column("Category", style="yellow")
+    table.add_column("Tags", style="yellow")
     table.add_column("Supplier", style="cyan")
     table.add_column("Provider/Compatible", style="magenta")
     table.add_column("API Key", style="dim")
@@ -142,7 +142,7 @@ def run_list(models):
         table.add_row(
             m.get("_id", ""),
             m.get("name", ""),
-            m.get("category", ""),
+            m.get("tags", ""),
             m.get("supplier", ""),
             m.get("provider", ""),
             display_key,
@@ -151,3 +151,4 @@ def run_list(models):
         )
         
     console.print(table)
+

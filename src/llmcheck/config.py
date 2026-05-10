@@ -30,7 +30,7 @@ def load_models():
         sorted_models.append(models[idx])
     return sorted_models
 
-def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, category=None):
+def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, tags=None):
     """Adds a new model configuration."""
     models = load_models()
     
@@ -59,8 +59,8 @@ def add_model(name, provider, model_name, api_key, base_url=None, supplier=None,
         lines.append(f'{prefix}BASE_URL="{base_url}"')
     if supplier:
         lines.append(f'{prefix}SUPPLIER="{supplier}"')
-    if category:
-        lines.append(f'{prefix}CATEGORY="{category}"')
+    if tags:
+        lines.append(f'{prefix}TAGS="{tags}"')
         
     with open(CONFIG_FILE, "a") as f:
         f.write("\n".join(lines) + "\n")
@@ -134,8 +134,8 @@ def edit_model(identifier, updates):
                     new_block.append(f'{prefix}BASE_URL="{target_model["base_url"]}"\n')
                 if target_model.get("supplier"):
                     new_block.append(f'{prefix}SUPPLIER="{target_model["supplier"]}"\n')
-                if target_model.get("category"):
-                    new_block.append(f'{prefix}CATEGORY="{target_model["category"]}"\n')
+                if target_model.get("tags") is not None:
+                    new_block.append(f'{prefix}TAGS="{target_model.get("tags", "")}"\n')
                 new_lines.extend(new_block)
                 block_inserted = True
         else:
