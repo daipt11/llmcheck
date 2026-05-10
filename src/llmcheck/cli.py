@@ -60,8 +60,7 @@ def cmd_add(args):
         name = input("Enter Display Name (e.g., OpenAI GPT-4): ").strip()
         category = prompt_category()
         supplier = input("Enter Supplier (e.g., azure, groq) [optional]: ").strip()
-        provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
-        model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
+        provider = input("Enter Provider/Compatible (e.g., openai, anthropic, gemini): ").strip()
         
         models = load_models()
         existing_models = [m for m in models if m.get("supplier", "").lower() == supplier.lower()] if supplier else []
@@ -84,6 +83,8 @@ def cmd_add(args):
         else:
             api_key = input("Enter API Key (press Enter to skip): ").strip()
             
+        model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
+
         if suggested_base_url:
             base_url = input(f"Enter Base URL [{suggested_base_url}]: ").strip()
             if not base_url:
@@ -135,13 +136,14 @@ def cmd_edit(args):
         category = new_category if new_category != current_category else ""
         
         supplier = input(f"Enter Supplier [{target_model.get('supplier', '')}]: ").strip()
-        provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
-        model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
+        provider = input(f"Enter Provider/Compatible [{target_model.get('provider', '')}]: ").strip()
         
         # Mask API key for display
         current_key = target_model.get('api_key', '')
         display_key = f"{current_key[:4]}...{current_key[-4:]}" if len(current_key) > 8 else "***" if current_key else "None"
         api_key = input(f"Enter API Key [{display_key}]: ").strip()
+        
+        model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
         
         current_base_url = target_model.get('base_url', '')
         base_url = input(f"Enter Base URL (type 'none' to clear) [{current_base_url}]: ").strip()

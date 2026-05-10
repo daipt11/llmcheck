@@ -51,16 +51,32 @@ def check_single_model(config, messages, verbose=False):
     else:
         error_msg = ""
         
+    # Shorten API Key for display
+    display_key = "-"
+    if api_key:
+        if len(api_key) > 8:
+            display_key = f"{api_key[:4]}...{api_key[-4:]}"
+        else:
+            display_key = "***"
+
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
-    return (config.get("_id", ""), name, provider, model_name, supplier, category, status, latency_str, error_msg)
+    return (config.get("_id", ""), name, category, supplier, provider, display_key, model_name, status, latency_str, error_msg)
 
 def check_group(group_models, messages, verbose, result_queue):
     for m in group_models:
         try:
             result = check_single_model(m, messages, verbose)
         except Exception as e:
-            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("provider", ""), m.get("model", ""), m.get("supplier", ""), m.get("category", ""), "❌", "-", str(e))
+            # Handle API key masking in error case too
+            api_key = m.get("api_key", "")
+            display_key = "-"
+            if api_key:
+                if len(api_key) > 8:
+                    display_key = f"{api_key[:4]}...{api_key[-4:]}"
+                else:
+                    display_key = "***"
+            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("category", ""), m.get("supplier", ""), m.get("provider", ""), display_key, m.get("model", ""), "❌", "-", str(e))
         result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
@@ -73,7 +89,8 @@ def run_check(models_to_check, verbose=False):
     table.add_column("Name", style="cyan")
     table.add_column("Category", style="yellow")
     table.add_column("Supplier", style="cyan")
-    table.add_column("Provider", style="magenta")
+    table.add_column("Provider/Compatible", style="magenta")
+    table.add_column("API Key", style="dim")
     table.add_column("Model", style="blue")
     table.add_column("Status", justify="center")
     table.add_column("Latency (s)", justify="right")
@@ -108,17 +125,27 @@ def run_list(models):
     table.add_column("Name", style="cyan")
     table.add_column("Category", style="yellow")
     table.add_column("Supplier", style="cyan")
-    table.add_column("Provider", style="magenta")
+    table.add_column("Provider/Compatible", style="magenta")
+    table.add_column("API Key", style="dim")
     table.add_column("Model", style="blue")
     table.add_column("Base URL", style="green")
     
     for m in models:
+        api_key = m.get("api_key", "")
+        display_key = "-"
+        if api_key:
+            if len(api_key) > 8:
+                display_key = f"{api_key[:4]}...{api_key[-4:]}"
+            else:
+                display_key = "***"
+
         table.add_row(
             m.get("_id", ""),
             m.get("name", ""),
             m.get("category", ""),
             m.get("supplier", ""),
             m.get("provider", ""),
+            display_key,
             m.get("model", ""),
             m.get("base_url", "-")
         )
