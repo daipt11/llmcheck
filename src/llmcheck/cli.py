@@ -9,12 +9,14 @@ from .checker import run_check, run_list
 console = Console()
 
 AVAILABLE_TAGS = [
-    ("reasoning",  "Strong Reasoning",     "Suy luận, logic, toán học, task phức tạp"),
-    ("general",    "General Purpose",       "Đa năng, chat, công việc thông thường"),
-    ("coding",     "Coding & Programming",  "Viết code, debug, lập trình"),
-    ("agent",      "Agent & Tool Use",      "Agent, tool calling, search, workflow"),
-    ("fast",       "Fast & Lite",           "Tốc độ cao, chi phí thấp, volume lớn"),
-    ("vision",     "Vision & Multimodal",   "Xử lý hình ảnh, vision"),
+    ("reasoning", "Reasoning",  "Suy luận mạnh"),
+    ("general",   "General",    "Đa năng"),
+    ("coding",    "Coding",     "Lập trình / Code"),
+    ("agent",     "Agent",      "Agent, Tool-use, Search"),
+    ("fast",      "Fast",       "Tốc độ cao"),
+    ("lite",      "Lite",       "Nhẹ, tiết kiệm"),
+    ("vision",    "Vision",     "Xử lý hình ảnh"),
+    ("large",     "Large",      "Model lớn, mạnh"),
 ]
 
 def prompt_tags(current_tags=None):
@@ -31,20 +33,25 @@ def prompt_tags(current_tags=None):
         for i, (tag, name, desc) in enumerate(AVAILABLE_TAGS, 1):
             tick = "[green]✓[/green] " if tag in selected else "  "
             console.print(f"  {tick}[green]{i}.[/green] [bold]{tag}[/bold] ({name}) - {desc}")
+        console.print(f"  [yellow]+.[/yellow] [bold]Thêm tag mới...[/bold]")
         console.print(f"  [green]0.[/green] [bold]Done[/bold] - Confirm selection")
 
-        choices = [str(i) for i in range(0, len(AVAILABLE_TAGS) + 1)]
-        choice = Prompt.ask("Toggle tag (number) or 0 to confirm", choices=choices, show_choices=False)
-        idx = int(choice)
+        choices = [str(i) for i in range(0, len(AVAILABLE_TAGS) + 1)] + ["+"]
+        choice = Prompt.ask("Toggle tag (number), + to add custom, 0 to confirm", choices=choices, show_choices=False)
 
-        if idx == 0:
+        if choice == "0":
             break
-
-        tag = AVAILABLE_TAGS[idx - 1][0]
-        if tag in selected:
-            selected.discard(tag)
+        elif choice == "+":
+            custom_tag = input("Enter custom tag name: ").strip().lower()
+            if custom_tag:
+                selected.add(custom_tag)
         else:
-            selected.add(tag)
+            idx = int(choice)
+            tag = AVAILABLE_TAGS[idx - 1][0]
+            if tag in selected:
+                selected.discard(tag)
+            else:
+                selected.add(tag)
 
     return ",".join(sorted(selected))
 
