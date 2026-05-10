@@ -58,10 +58,10 @@ def cmd_add(args):
     console.print(f"[bold cyan]Adding a new model to {CONFIG_FILE}[/bold cyan]")
     try:
         name = input("Enter Display Name (e.g., OpenAI GPT-4): ").strip()
+        category = prompt_category()
+        supplier = input("Enter Supplier (e.g., azure, groq) [optional]: ").strip()
         provider = input("Enter Provider (e.g., openai, anthropic, gemini): ").strip()
         model_name = input("Enter Model Name (e.g., gpt-4): ").strip()
-        supplier = input("Enter Supplier (e.g., azure, groq) [optional]: ").strip()
-        category = prompt_category()
         
         models = load_models()
         existing_models = [m for m in models if m.get("supplier", "").lower() == supplier.lower()] if supplier else []
@@ -129,13 +129,14 @@ def cmd_edit(args):
     
     try:
         name = input(f"Enter Display Name [{target_model.get('name', '')}]: ").strip()
-        provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
-        model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
-        supplier = input(f"Enter Supplier [{target_model.get('supplier', '')}]: ").strip()
         
         current_category = target_model.get('category', '')
         new_category = prompt_category(current_category)
         category = new_category if new_category != current_category else ""
+        
+        supplier = input(f"Enter Supplier [{target_model.get('supplier', '')}]: ").strip()
+        provider = input(f"Enter Provider [{target_model.get('provider', '')}]: ").strip()
+        model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
         
         # Mask API key for display
         current_key = target_model.get('api_key', '')
