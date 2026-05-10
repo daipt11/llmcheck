@@ -47,6 +47,7 @@ def add_model(name, provider, model_name, api_key, base_url=None, supplier=None,
     next_id = max_id + 1
     prefix = f"MODEL_{next_id}_"
     
+    lines = [
         f"",
         f"# Model Configuration for {name}",
         f'{prefix}NAME="{name}"',
