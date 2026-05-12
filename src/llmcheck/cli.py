@@ -102,6 +102,45 @@ def cmd_add(args):
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
 
+def cmd_show(args):
+    identifier = str(args.identifier)
+    models = load_models()
+    target = next((m for m in models if m.get("_id") == identifier), None)
+
+    if not target:
+        console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
+        sys.exit(1)
+
+    from rich.panel import Panel
+    from rich.table import Table
+
+    t = Table(show_header=False, box=None, padding=(0, 1))
+    t.add_column(style="bold cyan", justify="right")
+    t.add_column(style="white")
+
+    api_key = target.get("api_key", "")
+    if api_key and len(api_key) > 8:
+        display_key = f"{api_key[:4]}...{api_key[-4:]}"
+    elif api_key:
+        display_key = "***"
+    else:
+        display_key = "-"
+
+    fields = [
+        ("ID",                  target.get("_id", "")),
+        ("Name",                target.get("name", "")),
+        ("Tags",                target.get("tags", "-")),
+        ("Supplier",            target.get("supplier", "-")),
+        ("Provider/Compatible", target.get("provider", "")),
+        ("API Key",             display_key),
+        ("Model",               target.get("model", "")),
+        ("Base URL",            target.get("base_url", "-")),
+    ]
+    for label, value in fields:
+        t.add_row(label, value or "-")
+
+    console.print(Panel(t, title=f"[bold green]Model #{identifier}[/bold green]", expand=False))
+
 def cmd_rm(args):
     identifier = args.identifier
     if not identifier:
@@ -209,6 +248,11 @@ def main():
     # Add command
     parser_add = subparsers.add_parser("add", help="Add a new model configuration")
     parser_add.set_defaults(func=cmd_add)
+
+    # Show command
+    parser_show = subparsers.add_parser("show", help="Show full config of a model by ID")
+    parser_show.add_argument("identifier", help="The ID of the model to show")
+    parser_show.set_defaults(func=cmd_show)
 
     # Rm command
     parser_rm = subparsers.add_parser("rm", help="Remove a model configuration")
