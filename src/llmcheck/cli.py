@@ -118,21 +118,13 @@ def cmd_show(args):
     t.add_column(style="bold cyan", justify="right")
     t.add_column(style="white")
 
-    api_key = target.get("api_key", "")
-    if api_key and len(api_key) > 8:
-        display_key = f"{api_key[:4]}...{api_key[-4:]}"
-    elif api_key:
-        display_key = "***"
-    else:
-        display_key = "-"
-
     fields = [
         ("ID",                  target.get("_id", "")),
         ("Name",                target.get("name", "")),
         ("Tags",                target.get("tags", "-")),
         ("Supplier",            target.get("supplier", "-")),
         ("Provider/Compatible", target.get("provider", "")),
-        ("API Key",             display_key),
+        ("API Key",             target.get("api_key", "") or "-"),
         ("Model",               target.get("model", "")),
         ("Base URL",            target.get("base_url", "-")),
     ]
