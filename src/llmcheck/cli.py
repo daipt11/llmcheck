@@ -201,6 +201,19 @@ def cmd_edit(args):
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
 
+def cmd_web(args):
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]Error: uvicorn is not installed. Run: pip install uvicorn[/red]")
+        sys.exit(1)
+
+    port = args.port
+    console.print(f"[bold green]Starting llmcheck Web UI at http://localhost:{port}[/bold green]")
+    console.print("[dim]Press Ctrl+C to stop.[/dim]")
+    uvicorn.run("llmcheck.web:app", host="0.0.0.0", port=port, reload=False)
+
+
 def cmd_list(args):
     models = load_models()
 
@@ -211,11 +224,17 @@ def cmd_list(args):
     if args.tag:
         models = [m for m in models if args.tag.lower() in [t.strip() for t in m.get("tags", "").lower().split(",")]]
 
+    if args.sort:
+        if args.sort == "name":
+            models.sort(key=lambda m: m.get("name", "").lower())
+        elif args.sort == "supplier":
+            models.sort(key=lambda m: m.get("supplier", "").lower())
+
     if not models:
         console.print("[yellow]No models found matching the criteria.[/yellow]")
         return
 
-    run_list(models)
+    run_list(models, verbose=args.verbose)
 
 def cmd_check(args):
     models = load_models()
@@ -261,6 +280,8 @@ def main():
     parser_list.add_argument("-p", "--provider", help="Filter by provider")
     parser_list.add_argument("-s", "--supplier", help="Filter by supplier")
     parser_list.add_argument("-t", "--tag", help="Filter by tag")
+    parser_list.add_argument("--sort", choices=["name", "supplier"], help="Sort models by name or supplier")
+    parser_list.add_argument("-v", "--verbose", action="store_true", help="Show full model information")
     parser_list.set_defaults(func=cmd_list)
 
     # Check command (all)
@@ -273,6 +294,11 @@ def main():
     parser_model.add_argument("identifiers", nargs="+", help="The IDs of the models to check")
     parser_model.add_argument("-v", "--verbose", action="store_true", help="Show detailed error messages without truncation")
     parser_model.set_defaults(func=cmd_model)
+
+    # Web command
+    parser_web = subparsers.add_parser("web", help="Start the web UI dashboard")
+    parser_web.add_argument("-p", "--port", type=int, default=6565, help="Port to run the web UI on (default: 6565)")
+    parser_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args()
 

@@ -115,7 +115,7 @@ def run_check(models_to_check, verbose=False):
                 row_data = result_queue.get()
                 table.add_row(*row_data)
 
-def run_list(models):
+def run_list(models, verbose=False):
     if not models:
         console.print("[yellow]No models configured. Use 'llmcheck add' to add one.[/yellow]")
         return
@@ -125,30 +125,37 @@ def run_list(models):
     table.add_column("Name", style="cyan")
     table.add_column("Tags", style="yellow")
     table.add_column("Supplier", style="cyan")
-    table.add_column("Provider/Compatible", style="magenta")
-    table.add_column("API Key", style="dim")
-    table.add_column("Model", style="blue")
-    table.add_column("Base URL", style="green")
+    
+    if verbose:
+        table.add_column("Provider/Compatible", style="magenta")
+        table.add_column("API Key", style="dim")
+        table.add_column("Model", style="blue")
+        table.add_column("Base URL", style="green")
     
     for m in models:
-        api_key = m.get("api_key", "")
-        display_key = "-"
-        if api_key:
-            if len(api_key) > 8:
-                display_key = f"{api_key[:4]}...{api_key[-4:]}"
-            else:
-                display_key = "***"
-
-        table.add_row(
+        row_data = [
             m.get("_id", ""),
             m.get("name", ""),
             m.get("tags", ""),
             m.get("supplier", ""),
-            m.get("provider", ""),
-            display_key,
-            m.get("model", ""),
-            m.get("base_url", "-")
-        )
+        ]
+        
+        if verbose:
+            api_key = m.get("api_key", "")
+            display_key = "-"
+            if api_key:
+                if len(api_key) > 8:
+                    display_key = f"{api_key[:4]}...{api_key[-4:]}"
+                else:
+                    display_key = "***"
+            row_data.extend([
+                m.get("provider", ""),
+                display_key,
+                m.get("model", ""),
+                m.get("base_url", "-")
+            ])
+            
+        table.add_row(*row_data)
         
     console.print(table)
 

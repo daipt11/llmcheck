@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>llmcheck — Model Manager</title>
+  <meta name="description" content="Quản lý và kiểm tra sức khoẻ các LLM API qua giao diện web trực quan." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo material-symbols-outlined" aria-hidden="true">bolt</div>
+    <div>
+      <h1 class="header-title">llmcheck</h1>
+      <p class="header-subtitle">Model Manager</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button id="btn-check-all" class="btn btn-secondary" title="Ping tất cả models">
+      <span class="btn-icon material-symbols-outlined">search</span> Check All
+    </button>
+    <button id="btn-add-model" class="btn btn-primary" title="Thêm model mới">
+      <span class="btn-icon material-symbols-outlined">add</span> Add Model
+    </button>
+  </div>
+</header>
+
+<!-- ══ FILTER BAR ══════════════════════════════════════════════════════════ -->
+<div class="filter-bar">
+  <div class="filter-group">
+    <label for="filter-supplier" class="filter-label">Supplier</label>
+    <input id="filter-supplier" type="text" class="filter-input" placeholder="e.g. azure" autocomplete="off" />
+  </div>
+  <div class="filter-group">
+    <label for="filter-tag" class="filter-label">Tag</label>
+    <input id="filter-tag" type="text" class="filter-input" placeholder="e.g. reasoning" autocomplete="off" />
+  </div>
+  <button id="btn-apply-filter" class="btn btn-ghost">Apply</button>
+  <button id="btn-clear-filter" class="btn btn-ghost btn-danger-ghost">Clear</button>
+</div>
+
+<!-- ══ MAIN TABLE ═══════════════════════════════════════════════════════════ -->
+<main class="main">
+  <div class="table-wrapper">
+    <div id="table-loading" class="table-loading" aria-live="polite">
+      <div class="spinner"></div>
+      <span>Loading models…</span>
+    </div>
+
+    <table id="models-table" class="models-table" style="display:none">
+      <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th class="col-name sortable" id="sort-name" style="cursor: pointer; user-select: none;" title="Click to sort by Name">Name <span id="sort-name-icon" class="material-symbols-outlined" style="opacity: 0.5; font-size: 14px; margin-left: 4px; vertical-align: middle;">unfold_more</span></th>
+          <th class="col-tags">Tags</th>
+          <th class="col-supplier">Supplier</th>
+          <th class="col-status">Status</th>
+          <th class="col-latency">Latency</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="models-tbody">
+      </tbody>
+    </table>
+
+    <div id="empty-state" class="empty-state" style="display:none">
+      <div class="empty-icon material-symbols-outlined">smart_toy</div>
+      <p class="empty-title">No models found</p>
+      <p class="empty-subtitle">Add your first model to get started.</p>
+      <button class="btn btn-primary" onclick="openAddModal()"><span class="btn-icon material-symbols-outlined">add</span> Add Model</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="stats-bar" class="stats-bar" style="display:none">
+    <span id="stat-total" class="stat"></span>
+    <span id="stat-ok" class="stat stat-ok"></span>
+    <span id="stat-error" class="stat stat-error"></span>
+  </div>
+</main>
+
+<!-- ══ ADD / EDIT MODAL ════════════════════════════════════════════════════ -->
+<div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="modal-title" class="modal-title">Add Model</h2>
+      <button id="modal-close" class="modal-close" aria-label="Close modal"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></button>
+    </div>
+
+    <form id="model-form" class="modal-form" novalidate>
+      <input type="hidden" id="form-model-id" value="" />
+
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label for="form-name" class="form-label">Display Name <span class="required">*</span></label>
+          <input id="form-name" type="text" class="form-input" placeholder="e.g. OpenAI GPT-4o" required />
+        </div>
+        <div class="form-group">
+          <label for="form-supplier" class="form-label">Supplier</label>
+          <input id="form-supplier" type="text" class="form-input" placeholder="e.g. azure, groq" />
+        </div>
+      </div>
+
+      <div class="form-row two-col">
+        <div class="form-group">
+          <label for="form-provider" class="form-label">Provider/Compatible <span class="required">*</span></label>
+          <div style="position: relative;">
+            <input id="form-provider" type="text" class="form-input" placeholder="e.g. openai, anthropic" required style="padding-right: 35px;" />
+            <button type="button" id="copy-provider" class="toggle-key-btn material-symbols-outlined" aria-label="Copy Provider" style="right: 10px;" title="Copy Provider">content_copy</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="form-model" class="form-label">Model Name <span class="required">*</span></label>
+          <div style="position: relative;">
+            <input id="form-model" type="text" class="form-input" placeholder="e.g. gpt-4o" required style="padding-right: 35px;" />
+            <button type="button" id="copy-model" class="toggle-key-btn material-symbols-outlined" aria-label="Copy Model Name" style="right: 10px;" title="Copy Model Name">content_copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="form-api-key" class="form-label">API Key</label>
+        <div style="position: relative;">
+          <input id="form-api-key" type="password" class="form-input" placeholder="sk-..." autocomplete="off" style="padding-right: 70px;" />
+          <button type="button" id="toggle-api-key" class="toggle-key-btn material-symbols-outlined" aria-label="Toggle API key visibility" style="right: 35px;">visibility</button>
+          <button type="button" id="copy-api-key" class="toggle-key-btn material-symbols-outlined" aria-label="Copy API key" style="right: 10px;" title="Copy API key">content_copy</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="form-base-url" class="form-label">Base URL</label>
+        <div style="position: relative;">
+          <input id="form-base-url" type="url" class="form-input" placeholder="https://api.example.com/v1" style="padding-right: 35px;" />
+          <button type="button" id="copy-base-url" class="toggle-key-btn material-symbols-outlined" aria-label="Copy Base URL" style="right: 10px;" title="Copy Base URL">content_copy</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tags</label>
+        <div id="tags-container" class="tags-container"></div>
+        <div class="custom-tag-row">
+          <input id="custom-tag-input" type="text" class="form-input form-input-sm" placeholder="Custom tag…" />
+          <button type="button" id="btn-add-custom-tag" class="btn btn-ghost btn-sm">+ Add</button>
+        </div>
+      </div>
+
+      <div id="form-error" class="form-error" style="display:none"></div>
+
+      <div class="modal-footer">
+        <button type="button" id="btn-cancel" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="btn-save" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ CONFIRM DELETE MODAL ════════════════════════════════════════════════ -->
+<div id="confirm-overlay" class="modal-overlay" role="dialog" aria-modal="true" style="display:none">
+  <div class="modal-card modal-card-sm">
+    <div class="modal-header">
+      <h2 class="modal-title">Delete Model</h2>
+    </div>
+    <p id="confirm-message" class="confirm-message"></p>
+    <div class="modal-footer">
+      <button id="btn-confirm-cancel" class="btn btn-ghost">Cancel</button>
+      <button id="btn-confirm-delete" class="btn btn-danger">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ════════════════════════════════════════════════════════════════ -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
