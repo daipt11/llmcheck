@@ -25,7 +25,9 @@ let checkStatus = {};           // { [id]: { status, latency, error } }
 let selectedTags = new Set();   // tags chosen in the modal
 let customTags   = new Set();   // user-defined custom tags in the modal
 let activeCheckSource = null;   // current SSE EventSource
-let sortState    = 'none';      // 'none', 'asc', 'desc'
+let selectedForCompare = new Set(); // ids of selected models (max 3)
+let sortCol      = null;        // 'name', 'context', 'supplier'
+let sortDir      = 'asc';       // 'asc', 'desc'
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
@@ -102,13 +104,14 @@ function buildRow(model) {
   tr.dataset.id = model._id;
 
   tr.innerHTML = `
-    <td><span class="cell-id">#${model._id}</span></td>
-    <td><span class="cell-name">${escHtml(model.name || '')}</span></td>
-    <td>${renderTags(model.tags)}</td>
-    <td><span class="cell-supplier">${escHtml(model.supplier || '–')}</span></td>
-    <td class="cell-status-${model._id}">${renderStatusCell(model)}</td>
-    <td class="cell-latency-${model._id}">${renderLatencyCell(model)}</td>
-    <td>
+    <td class="col-id"><span class="cell-id">#${model._id}</span></td>
+    <td class="col-name"><span class="cell-name">${escHtml(model.name || '')}</span></td>
+    <td class="col-tags">${renderTags(model.tags)}</td>
+    <td class="col-context"><span class="cell-context">${escHtml(model.context || '–')}</span></td>
+    <td class="col-supplier"><span class="cell-supplier">${escHtml(model.supplier || '–')}</span></td>
+    <td class="col-status cell-status-${model._id}">${renderStatusCell(model)}</td>
+    <td class="col-latency cell-latency-${model._id}">${renderLatencyCell(model)}</td>
+    <td class="col-actions">
       <div class="row-actions">
         <button class="action-btn check" title="Check this model" onclick="checkOne('${model._id}')"><span class="material-symbols-outlined" style="font-size:16px;">search</span></button>
         <button class="action-btn" title="Edit model" onclick="openEditModal('${model._id}')"><span class="material-symbols-outlined" style="font-size:16px;">edit</span></button>
@@ -116,6 +119,28 @@ function buildRow(model) {
       </div>
     </td>
   `;
+
+  if (selectedForCompare.has(model._id)) {
+    tr.classList.add('selected-row');
+  }
+
+  tr.addEventListener('click', (e) => {
+    if (e.target.closest('.action-btn') || e.target.closest('a')) return;
+    
+    if (selectedForCompare.has(model._id)) {
+      selectedForCompare.delete(model._id);
+      tr.classList.remove('selected-row');
+    } else {
+      if (selectedForCompare.size >= 3) {
+        showToast('You can only compare up to 3 models at a time.', 'error');
+        return;
+      }
+      selectedForCompare.add(model._id);
+      tr.classList.add('selected-row');
+    }
+    updateCompareButton();
+  });
+
   return tr;
 }
 
@@ -148,10 +173,24 @@ function renderTable(models) {
   tbody.innerHTML = '';
   
   let displayModels = [...models];
-  if (sortState === 'asc') {
-    displayModels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  } else if (sortState === 'desc') {
-    displayModels.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+  if (sortCol) {
+    displayModels.sort((a, b) => {
+      let valA = a[sortCol] || '';
+      let valB = b[sortCol] || '';
+      let cmp = 0;
+      if (sortCol === 'context') {
+        const parseCtx = c => {
+          const s = String(c).toLowerCase().trim();
+          if (s.endsWith('k')) return parseFloat(s) * 1000;
+          if (s.endsWith('m')) return parseFloat(s) * 1000000;
+          return parseFloat(s) || 0;
+        };
+        cmp = parseCtx(valA) - parseCtx(valB);
+      } else {
+        cmp = String(valA).localeCompare(String(valB));
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
   }
 
   displayModels.forEach(m => tbody.appendChild(buildRow(m)));
@@ -169,11 +208,14 @@ function updateStats(models) {
 
 // Update only status & latency cells without re-rendering whole table
 function patchRowStatus(modelId) {
-  const statusCell  = document.querySelector(`.cell-status-${modelId}`);
-  const latencyCell = document.querySelector(`.cell-latency-${modelId}`);
+  const statusCells  = document.querySelectorAll(`.cell-status-${modelId}`);
+  const latencyCells = document.querySelectorAll(`.cell-latency-${modelId}`);
   const model = allModels.find(m => m._id === modelId);
-  if (statusCell && model)  statusCell.innerHTML  = renderStatusCell(model);
-  if (latencyCell && model) latencyCell.innerHTML = renderLatencyCell(model);
+  if (!model) return;
+  const statusHtml = renderStatusCell(model);
+  const latencyHtml = renderLatencyCell(model);
+  statusCells.forEach(el => el.innerHTML = statusHtml);
+  latencyCells.forEach(el => el.innerHTML = latencyHtml);
 }
 
 // ── Load models ───────────────────────────────────────────────────────────────
@@ -217,19 +259,34 @@ $('btn-clear-filter').addEventListener('click', () => {
   });
 });
 
-// Sort by Name
-$('sort-name').addEventListener('click', () => {
-  if (sortState === 'none') sortState = 'asc';
-  else if (sortState === 'asc') sortState = 'desc';
-  else sortState = 'none';
+// Sorting
+function handleSort(col) {
+  if (sortCol === col) {
+    if (sortDir === 'asc') sortDir = 'desc';
+    else { sortCol = null; sortDir = 'asc'; }
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
   
-  const icon = $('sort-name-icon');
-  if (sortState === 'asc') icon.textContent = 'arrow_upward';
-  else if (sortState === 'desc') icon.textContent = 'arrow_downward';
-  else icon.textContent = 'unfold_more';
+  ['name', 'context', 'supplier'].forEach(c => {
+    const icon = $(`sort-${c}-icon`);
+    if (icon) icon.textContent = 'unfold_more';
+  });
+
+  if (sortCol) {
+    const icon = $(`sort-${sortCol}-icon`);
+    if (icon) {
+      icon.textContent = sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward';
+    }
+  }
   
   renderTable(allModels);
-});
+}
+
+$('sort-name').addEventListener('click', () => handleSort('name'));
+$('sort-context').addEventListener('click', () => handleSort('context'));
+$('sort-supplier').addEventListener('click', () => handleSort('supplier'));
 
 // ── Check (SSE) ───────────────────────────────────────────────────────────────
 
@@ -417,6 +474,7 @@ async function openEditModal(modelId) {
     $('form-model-id').value  = model._id;
     $('form-name').value      = model.name      || '';
     $('form-supplier').value  = model.supplier  || '';
+    $('form-context').value   = model.context   || '';
     $('form-provider').value  = model.provider  || '';
     $('form-model').value     = model.model     || '';
     $('form-base-url').value  = model.base_url  || '';
@@ -474,6 +532,7 @@ $('model-form').addEventListener('submit', async (e) => {
   const modelId   = $('form-model-id').value;
   const name      = $('form-name').value.trim();
   const supplier  = $('form-supplier').value.trim();
+  const context   = $('form-context').value.trim();
   const provider  = $('form-provider').value.trim();
   const modelName = $('form-model').value.trim();
   const apiKey    = $('form-api-key').value.trim();
@@ -487,7 +546,7 @@ $('model-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  const payload = { name, provider, model: modelName, api_key: apiKey, base_url: baseUrl, supplier, tags };
+  const payload = { name, provider, model: modelName, api_key: apiKey, base_url: baseUrl, supplier, context, tags };
   const saveBtn = $('btn-save');
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
@@ -530,6 +589,82 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// ── Comparison View Logic ──────────────────────────────────────────────────
+
+function updateCompareButton() {
+  const btn = $('btn-compare');
+  if (!btn) return;
+  const count = selectedForCompare.size;
+  btn.innerHTML = `<span class="btn-icon material-symbols-outlined" style="margin-right: 4px;">compare_arrows</span> Compare (${count})`;
+  btn.disabled = count === 0;
+}
+
+$('btn-compare').addEventListener('click', () => {
+  if (selectedForCompare.size === 0) return;
+  openCompareView();
+});
+
+$('btn-close-compare').addEventListener('click', () => {
+  closeCompareView();
+});
+
+function openCompareView() {
+  const filterBar = document.querySelector('.filter-bar');
+  if (filterBar) filterBar.style.display = 'none';
+  const tableWrapper = document.querySelector('.table-wrapper');
+  if (tableWrapper) tableWrapper.style.display = 'none';
+  
+  $('comparison-view').style.display = 'block';
+  renderComparisonView();
+}
+
+function closeCompareView() {
+  const filterBar = document.querySelector('.filter-bar');
+  if (filterBar) filterBar.style.display = 'flex';
+  const tableWrapper = document.querySelector('.table-wrapper');
+  if (tableWrapper) tableWrapper.style.display = 'block';
+  
+  $('comparison-view').style.display = 'none';
+}
+
+function renderComparisonView() {
+  const container = $('compare-container');
+  container.innerHTML = '';
+  
+  const selectedModels = allModels.filter(m => selectedForCompare.has(m._id));
+  
+  selectedModels.forEach(model => {
+    const col = el('div', 'compare-column');
+    col.innerHTML = `
+      <h3>${escHtml(model.name || 'Unknown')}</h3>
+      <div class="compare-detail">
+        <span class="compare-detail-label">Supplier</span>
+        <span class="compare-detail-value">${escHtml(model.supplier || '–')}</span>
+      </div>
+      <div class="compare-detail">
+        <span class="compare-detail-label">Context</span>
+        <span class="compare-detail-value">${escHtml(model.context || '–')}</span>
+      </div>
+      <div class="compare-detail">
+        <span class="compare-detail-label">Tags</span>
+        <span class="compare-detail-value" style="margin-top: 4px;">${renderTags(model.tags)}</span>
+      </div>
+      <div class="compare-detail">
+        <span class="compare-detail-label">Status</span>
+        <span class="compare-detail-value cell-status-${model._id}" style="margin-top: 4px;">${renderStatusCell(model)}</span>
+      </div>
+      <div class="compare-detail">
+        <span class="compare-detail-label">Latency</span>
+        <span class="compare-detail-value cell-latency-${model._id}" style="margin-top: 4px;">${renderLatencyCell(model)}</span>
+      </div>
+      <button class="btn btn-secondary compare-check-btn" onclick="checkOne('${model._id}')" style="margin-top: auto; justify-content: center;">
+        <span class="btn-icon material-symbols-outlined">search</span> Check Latency
+      </button>
+    `;
+    container.appendChild(col);
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 

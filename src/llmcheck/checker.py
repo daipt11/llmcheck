@@ -14,6 +14,7 @@ def check_single_model(config, messages, verbose=False):
     name = config.get("name", "Unknown")
     provider = config.get("provider", "")
     model_name = config.get("model", "")
+    context = config.get("context", "-")
     supplier = config.get("supplier", "")
     tags = config.get("tags", "")
     api_key = config.get("api_key", None)
@@ -61,7 +62,7 @@ def check_single_model(config, messages, verbose=False):
 
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     
-    return (config.get("_id", ""), name, tags, supplier, provider, display_key, model_name, status, latency_str, error_msg)
+    return (config.get("_id", ""), name, tags, context, supplier, provider, display_key, model_name, status, latency_str, error_msg)
 
 def check_group(group_models, messages, verbose, result_queue):
     for m in group_models:
@@ -76,7 +77,7 @@ def check_group(group_models, messages, verbose, result_queue):
                     display_key = f"{api_key[:4]}...{api_key[-4:]}"
                 else:
                     display_key = "***"
-            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("tags", ""), m.get("supplier", ""), m.get("provider", ""), display_key, m.get("model", ""), "❌", "-", str(e))
+            result = (m.get("_id", ""), m.get("name", "Unknown"), m.get("tags", ""), m.get("context", "-"), m.get("supplier", ""), m.get("provider", ""), display_key, m.get("model", ""), "❌", "-", str(e))
         result_queue.put(result)
 
 def run_check(models_to_check, verbose=False):
@@ -88,6 +89,7 @@ def run_check(models_to_check, verbose=False):
     table.add_column("ID", style="bold green", justify="right")
     table.add_column("Name", style="cyan")
     table.add_column("Tags", style="yellow")
+    table.add_column("Context", style="magenta")
     table.add_column("Supplier", style="cyan")
     table.add_column("Provider/Compatible", style="magenta")
     table.add_column("API Key", style="dim")
@@ -124,6 +126,7 @@ def run_list(models, verbose=False):
     table.add_column("ID", style="bold green", justify="right")
     table.add_column("Name", style="cyan")
     table.add_column("Tags", style="yellow")
+    table.add_column("Context", style="magenta")
     table.add_column("Supplier", style="cyan")
     
     if verbose:
@@ -137,6 +140,7 @@ def run_list(models, verbose=False):
             m.get("_id", ""),
             m.get("name", ""),
             m.get("tags", ""),
+            m.get("context", "-"),
             m.get("supplier", ""),
         ]
         

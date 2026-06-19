@@ -30,7 +30,7 @@ def load_models():
         sorted_models.append(models[idx])
     return sorted_models
 
-def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, tags=None):
+def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, tags=None, context=None):
     """Adds a new model configuration."""
     models = load_models()
     
@@ -61,6 +61,8 @@ def add_model(name, provider, model_name, api_key, base_url=None, supplier=None,
         lines.append(f'{prefix}SUPPLIER="{supplier}"')
     if tags:
         lines.append(f'{prefix}TAGS="{tags}"')
+    if context:
+        lines.append(f'{prefix}CONTEXT="{context}"')
         
     with open(CONFIG_FILE, "a") as f:
         f.write("\n".join(lines) + "\n")
@@ -136,6 +138,8 @@ def edit_model(identifier, updates):
                     new_block.append(f'{prefix}SUPPLIER="{target_model["supplier"]}"\n')
                 if target_model.get("tags") is not None:
                     new_block.append(f'{prefix}TAGS="{target_model.get("tags", "")}"\n')
+                if target_model.get("context") is not None:
+                    new_block.append(f'{prefix}CONTEXT="{target_model.get("context", "")}"\n')
                 new_lines.extend(new_block)
                 block_inserted = True
         else:

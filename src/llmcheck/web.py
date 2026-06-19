@@ -33,6 +33,7 @@ class ModelCreate(BaseModel):
     api_key: str = ""
     base_url: str = ""
     supplier: str = ""
+    context: str = ""
     tags: str = ""
 
 
@@ -43,6 +44,7 @@ class ModelUpdate(BaseModel):
     api_key: str = ""
     base_url: str = ""
     supplier: str = ""
+    context: str = ""
     tags: str = ""
 
 
@@ -80,6 +82,7 @@ def api_add_model(body: ModelCreate):
         api_key=body.api_key,
         base_url=body.base_url or None,
         supplier=body.supplier or None,
+        context=body.context or None,
         tags=body.tags or None,
     )
     # Return the newly-added model
@@ -103,6 +106,7 @@ def api_edit_model(model_id: str, body: ModelUpdate):
         updates["model"] = body.model
     if body.supplier:
         updates["supplier"] = body.supplier
+    updates["context"] = body.context
     # Always write tags (allows clearing)
     updates["tags"] = body.tags
     if body.api_key:
@@ -192,12 +196,13 @@ def _sse_check(models: list) -> StreamingResponse:
             if result is None:
                 break
 
-            model_id, name, tags, supplier, provider, display_key, model_name, status, latency_str, error_msg = result
+            model_id, name, tags, context, supplier, provider, display_key, model_name, status, latency_str, error_msg = result
 
             payload = {
                 "id": model_id,
                 "name": name,
                 "tags": tags,
+                "context": context,
                 "supplier": supplier,
                 "provider": provider,
                 "api_key": display_key,

@@ -7,9 +7,8 @@
   <meta name="description" content="Quản lý và kiểm tra sức khoẻ các LLM API qua giao diện web trực quan." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=0.3.0" />
 </head>
 <body>
 
@@ -21,14 +20,6 @@
       <h1 class="header-title">llmcheck</h1>
       <p class="header-subtitle">Model Manager</p>
     </div>
-  </div>
-  <div class="header-actions">
-    <button id="btn-check-all" class="btn btn-secondary" title="Ping tất cả models">
-      <span class="btn-icon material-symbols-outlined">search</span> Check All
-    </button>
-    <button id="btn-add-model" class="btn btn-primary" title="Thêm model mới">
-      <span class="btn-icon material-symbols-outlined">add</span> Add Model
-    </button>
   </div>
 </header>
 
@@ -44,6 +35,18 @@
   </div>
   <button id="btn-apply-filter" class="btn btn-ghost">Apply</button>
   <button id="btn-clear-filter" class="btn btn-ghost btn-danger-ghost">Clear</button>
+  
+  <div class="filter-actions" style="margin-left: auto; display: flex; gap: 8px;">
+    <button id="btn-add-model" class="btn btn-primary" title="Thêm model mới">
+      <span class="btn-icon material-symbols-outlined">add</span> Add Model
+    </button>
+    <button id="btn-check-all" class="btn btn-secondary" title="Ping tất cả models">
+      <span class="btn-icon material-symbols-outlined">search</span> Check All
+    </button>
+    <button id="btn-compare" class="btn btn-secondary" disabled title="Select up to 3 models to compare">
+      <span class="btn-icon material-symbols-outlined" style="margin-right: 4px;">compare_arrows</span> Compare (0)
+    </button>
+  </div>
 </div>
 
 <!-- ══ MAIN TABLE ═══════════════════════════════════════════════════════════ -->
@@ -60,7 +63,8 @@
           <th class="col-id">ID</th>
           <th class="col-name sortable" id="sort-name" style="cursor: pointer; user-select: none;" title="Click to sort by Name">Name <span id="sort-name-icon" class="material-symbols-outlined" style="opacity: 0.5; font-size: 14px; margin-left: 4px; vertical-align: middle;">unfold_more</span></th>
           <th class="col-tags">Tags</th>
-          <th class="col-supplier">Supplier</th>
+          <th class="col-context sortable" id="sort-context" style="cursor: pointer; user-select: none;" title="Click to sort by Context">Context <span id="sort-context-icon" class="material-symbols-outlined" style="opacity: 0.5; font-size: 14px; margin-left: 4px; vertical-align: middle;">unfold_more</span></th>
+          <th class="col-supplier sortable" id="sort-supplier" style="cursor: pointer; user-select: none;" title="Click to sort by Supplier">Supplier <span id="sort-supplier-icon" class="material-symbols-outlined" style="opacity: 0.5; font-size: 14px; margin-left: 4px; vertical-align: middle;">unfold_more</span></th>
           <th class="col-status">Status</th>
           <th class="col-latency">Latency</th>
           <th class="col-actions">Actions</th>
@@ -77,6 +81,20 @@
       <button class="btn btn-primary" onclick="openAddModal()"><span class="btn-icon material-symbols-outlined">add</span> Add Model</button>
     </div>
   </div>
+
+  <!-- ══ COMPARISON VIEW ═══════════════════════════════════════════════════ -->
+  <div id="comparison-view" style="display:none;">
+    <div class="comparison-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+      <button id="btn-close-compare" class="btn btn-ghost" style="padding-left: 0;">
+        <span class="btn-icon material-symbols-outlined">arrow_back</span> Back to List
+      </button>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 500;">Model Comparison</h2>
+    </div>
+    <div id="compare-container" class="compare-container">
+      <!-- Compare columns will be injected here -->
+    </div>
+  </div>
+
 
   <!-- Stats bar -->
   <div id="stats-bar" class="stats-bar" style="display:none">
@@ -97,14 +115,19 @@
     <form id="model-form" class="modal-form" novalidate>
       <input type="hidden" id="form-model-id" value="" />
 
+      <div class="form-group">
+        <label for="form-name" class="form-label">Display Name <span class="required">*</span></label>
+        <input id="form-name" type="text" class="form-input" placeholder="e.g. OpenAI GPT-4o" required />
+      </div>
+
       <div class="form-row two-col">
-        <div class="form-group">
-          <label for="form-name" class="form-label">Display Name <span class="required">*</span></label>
-          <input id="form-name" type="text" class="form-input" placeholder="e.g. OpenAI GPT-4o" required />
-        </div>
         <div class="form-group">
           <label for="form-supplier" class="form-label">Supplier</label>
           <input id="form-supplier" type="text" class="form-input" placeholder="e.g. azure, groq" />
+        </div>
+        <div class="form-group">
+          <label for="form-context" class="form-label">Context Window</label>
+          <input id="form-context" type="text" class="form-input" placeholder="e.g. 128k, 8k" />
         </div>
       </div>
 
@@ -178,6 +201,6 @@
 <!-- ══ TOAST ════════════════════════════════════════════════════════════════ -->
 <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=0.3.0"></script>
 </body>
 </html>
