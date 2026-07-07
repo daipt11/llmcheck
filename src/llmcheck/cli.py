@@ -120,7 +120,7 @@ def cmd_show(args):
     t.add_column(style="white")
 
     fields = [
-        ("ID",                  target.get("_id", "")),
+        ("ID",                  target.get("display_id") or target.get("_id", "")),
         ("Name",                target.get("name", "")),
         ("Tags",                target.get("tags", "-")),
         ("Supplier",            target.get("supplier", "-")),

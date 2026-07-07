@@ -25,12 +25,19 @@ def load_models():
                     models[model_idx] = {"_id": model_idx}
                 models[model_idx][field.lower()] = value
     
-    sorted_models = []
-    for idx in sorted(models.keys(), key=lambda x: int(x) if x.isdigit() else x):
-        sorted_models.append(models[idx])
+    sorted_models = list(models.values())
+    
+    def sort_key(m):
+        val = m.get("display_id") or m.get("_id", "")
+        try:
+            return (0, int(val))
+        except ValueError:
+            return (1, str(val).lower())
+            
+    sorted_models.sort(key=sort_key)
     return sorted_models
 
-def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, tags=None, context=None):
+def add_model(name, provider, model_name, api_key, base_url=None, supplier=None, tags=None, context=None, display_id=None):
     """Adds a new model configuration."""
     models = load_models()
     
@@ -63,7 +70,9 @@ def add_model(name, provider, model_name, api_key, base_url=None, supplier=None,
         lines.append(f'{prefix}TAGS="{tags}"')
     if context:
         lines.append(f'{prefix}CONTEXT="{context}"')
-        
+    if display_id:
+        lines.append(f'{prefix}DISPLAY_ID="{display_id}"')
+    
     with open(CONFIG_FILE, "a") as f:
         f.write("\n".join(lines) + "\n")
 
@@ -140,6 +149,8 @@ def edit_model(identifier, updates):
                     new_block.append(f'{prefix}TAGS="{target_model.get("tags", "")}"\n')
                 if target_model.get("context") is not None:
                     new_block.append(f'{prefix}CONTEXT="{target_model.get("context", "")}"\n')
+                if target_model.get("display_id") is not None:
+                    new_block.append(f'{prefix}DISPLAY_ID="{target_model.get("display_id", "")}"\n')
                 new_lines.extend(new_block)
                 block_inserted = True
         else:

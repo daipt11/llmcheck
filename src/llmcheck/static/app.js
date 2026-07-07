@@ -9,32 +9,32 @@
 
 const AVAILABLE_TAGS = [
   { key: 'reasoning', label: 'Reasoning', desc: 'Suy luận mạnh' },
-  { key: 'general',   label: 'General',   desc: 'Đa năng' },
-  { key: 'coding',    label: 'Coding',    desc: 'Lập trình / Code' },
-  { key: 'agent',     label: 'Agent',     desc: 'Agent, Tool-use, Search' },
-  { key: 'fast',      label: 'Fast',      desc: 'Tốc độ cao' },
-  { key: 'lite',      label: 'Lite',      desc: 'Nhẹ, tiết kiệm' },
-  { key: 'vision',    label: 'Vision',    desc: 'Xử lý hình ảnh' },
-  { key: 'large',     label: 'Large',     desc: 'Model lớn, mạnh' },
+  { key: 'general', label: 'General', desc: 'Đa năng' },
+  { key: 'coding', label: 'Coding', desc: 'Lập trình / Code' },
+  { key: 'agent', label: 'Agent', desc: 'Agent, Tool-use, Search' },
+  { key: 'fast', label: 'Fast', desc: 'Tốc độ cao' },
+  { key: 'lite', label: 'Lite', desc: 'Nhẹ, tiết kiệm' },
+  { key: 'vision', label: 'Vision', desc: 'Xử lý hình ảnh' },
+  { key: 'large', label: 'Large', desc: 'Model lớn, mạnh' },
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let allModels   = [];           // full model list from API
+let allModels = [];           // full model list from API
 let checkStatus = {};           // { [id]: { status, latency, error } }
 let selectedTags = new Set();   // tags chosen in the modal
-let customTags   = new Set();   // user-defined custom tags in the modal
+let customTags = new Set();   // user-defined custom tags in the modal
 let activeCheckSource = null;   // current SSE EventSource
 let selectedForCompare = new Set(); // ids of selected models (max 3)
-let sortCol      = null;        // 'name', 'context', 'supplier'
-let sortDir      = 'asc';       // 'asc', 'desc'
+let sortCol = null;        // 'name', 'context', 'supplier'
+let sortDir = 'asc';       // 'asc', 'desc'
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
-const $  = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
-  if (cls)  e.className   = cls;
+  if (cls) e.className = cls;
   if (text) e.textContent = text;
   return e;
 };
@@ -44,7 +44,7 @@ const el = (tag, cls, text) => {
 function showToast(message, type = 'info', duration = 3500) {
   const container = $('toast-container');
   const toast = el('div', `toast toast-${type}`);
-  const iconName  = { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info';
+  const iconName = { success: 'check_circle', error: 'error', info: 'info' }[type] || 'info';
   toast.innerHTML = `<span class="material-symbols-outlined">${iconName}</span><span style="margin-left:8px;">${message}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
@@ -104,7 +104,7 @@ function buildRow(model) {
   tr.dataset.id = model._id;
 
   tr.innerHTML = `
-    <td class="col-id"><span class="cell-id">#${model._id}</span></td>
+    <td class="col-id"><span class="cell-id">#${model.display_id || model._id}</span></td>
     <td class="col-name"><span class="cell-name">${escHtml(model.name || '')}</span></td>
     <td class="col-tags">${renderTags(model.tags)}</td>
     <td class="col-context"><span class="cell-context">${escHtml(model.context || '–')}</span></td>
@@ -126,7 +126,7 @@ function buildRow(model) {
 
   tr.addEventListener('click', (e) => {
     if (e.target.closest('.action-btn') || e.target.closest('a')) return;
-    
+
     if (selectedForCompare.has(model._id)) {
       selectedForCompare.delete(model._id);
       tr.classList.remove('selected-row');
@@ -151,11 +151,11 @@ function escHtml(str) {
 }
 
 function renderTable(models) {
-  const tbody   = $('models-tbody');
-  const table   = $('models-table');
+  const tbody = $('models-tbody');
+  const table = $('models-table');
   const loading = $('table-loading');
-  const empty   = $('empty-state');
-  const stats   = $('stats-bar');
+  const empty = $('empty-state');
+  const stats = $('stats-bar');
 
   loading.style.display = 'none';
 
@@ -171,24 +171,23 @@ function renderTable(models) {
   stats.style.display = 'flex';
 
   tbody.innerHTML = '';
-  
+
   let displayModels = [...models];
   if (sortCol) {
     displayModels.sort((a, b) => {
-      let valA = a[sortCol] || '';
-      let valB = b[sortCol] || '';
-      let cmp = 0;
+      let va, vb;
       if (sortCol === 'context') {
-        const parseCtx = c => {
-          const s = String(c).toLowerCase().trim();
-          if (s.endsWith('k')) return parseFloat(s) * 1000;
-          if (s.endsWith('m')) return parseFloat(s) * 1000000;
-          return parseFloat(s) || 0;
-        };
-        cmp = parseCtx(valA) - parseCtx(valB);
+        va = parseContext(a.context);
+        vb = parseContext(b.context);
+      } else if (sortCol === 'id') {
+        va = (a.display_id || a._id || '').toLowerCase();
+        vb = (b.display_id || b._id || '').toLowerCase();
       } else {
-        cmp = String(valA).localeCompare(String(valB));
+        va = String(a[sortCol] || '').toLowerCase();
+        vb = String(b[sortCol] || '').toLowerCase();
       }
+      
+      let cmp = va < vb ? -1 : va > vb ? 1 : 0;
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }
@@ -200,15 +199,15 @@ function renderTable(models) {
 function updateStats(models) {
   $('stat-total').textContent = `${models.length} models`;
   const checked = Object.values(checkStatus);
-  const ok      = checked.filter(c => c.status === 'ok').length;
-  const err     = checked.filter(c => c.status === 'error').length;
-  $('stat-ok').innerHTML      = ok  ? `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:bottom;">check</span> ${ok} online`  : '';
-  $('stat-error').innerHTML   = err ? `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:bottom;">close</span> ${err} offline` : '';
+  const ok = checked.filter(c => c.status === 'ok').length;
+  const err = checked.filter(c => c.status === 'error').length;
+  $('stat-ok').innerHTML = ok ? `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:bottom;">check</span> ${ok} online` : '';
+  $('stat-error').innerHTML = err ? `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:bottom;">close</span> ${err} offline` : '';
 }
 
 // Update only status & latency cells without re-rendering whole table
 function patchRowStatus(modelId) {
-  const statusCells  = document.querySelectorAll(`.cell-status-${modelId}`);
+  const statusCells = document.querySelectorAll(`.cell-status-${modelId}`);
   const latencyCells = document.querySelectorAll(`.cell-latency-${modelId}`);
   const model = allModels.find(m => m._id === modelId);
   if (!model) return;
@@ -222,8 +221,8 @@ function patchRowStatus(modelId) {
 
 async function loadModels(params = {}) {
   $('table-loading').style.display = 'flex';
-  $('models-table').style.display  = 'none';
-  $('empty-state').style.display   = 'none';
+  $('models-table').style.display = 'none';
+  $('empty-state').style.display = 'none';
 
   const qs = new URLSearchParams(params).toString();
   try {
@@ -248,7 +247,7 @@ $('btn-apply-filter').addEventListener('click', () => {
 
 $('btn-clear-filter').addEventListener('click', () => {
   $('filter-supplier').value = '';
-  $('filter-tag').value      = '';
+  $('filter-tag').value = '';
   loadModels();
 });
 
@@ -262,14 +261,13 @@ $('btn-clear-filter').addEventListener('click', () => {
 // Sorting
 function handleSort(col) {
   if (sortCol === col) {
-    if (sortDir === 'asc') sortDir = 'desc';
-    else { sortCol = null; sortDir = 'asc'; }
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
   } else {
     sortCol = col;
     sortDir = 'asc';
   }
-  
-  ['name', 'context', 'supplier'].forEach(c => {
+
+  ['id', 'name', 'context', 'supplier'].forEach(c => {
     const icon = $(`sort-${c}-icon`);
     if (icon) icon.textContent = 'unfold_more';
   });
@@ -280,10 +278,11 @@ function handleSort(col) {
       icon.textContent = sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward';
     }
   }
-  
+
   renderTable(allModels);
 }
 
+$('sort-id').addEventListener('click', () => handleSort('id'));
 $('sort-name').addEventListener('click', () => handleSort('name'));
 $('sort-context').addEventListener('click', () => handleSort('context'));
 $('sort-supplier').addEventListener('click', () => handleSort('supplier'));
@@ -318,9 +317,9 @@ function startSSECheck(url, modelIds) {
     }
 
     checkStatus[data.id] = {
-      status:  data.status,
+      status: data.status,
       latency: data.latency,
-      error:   data.error,
+      error: data.error,
     };
     patchRowStatus(data.id);
     updateStats(allModels);
@@ -379,7 +378,7 @@ function renderTagOptions() {
     chip.title = t.desc;
     chip.addEventListener('click', () => {
       if (selectedTags.has(t.key)) selectedTags.delete(t.key);
-      else                          selectedTags.add(t.key);
+      else selectedTags.add(t.key);
       chip.classList.toggle('selected');
     });
     container.appendChild(chip);
@@ -387,7 +386,7 @@ function renderTagOptions() {
 
   customTags.forEach(tag => {
     const chip = el('span', 'tag-option custom selected', tag);
-    const rm   = el('span', 'tag-remove material-symbols-outlined', 'close');
+    const rm = el('span', 'tag-remove material-symbols-outlined', 'close');
     rm.style.fontSize = '12px';
     rm.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -402,7 +401,7 @@ function renderTagOptions() {
 
 $('btn-add-custom-tag').addEventListener('click', () => {
   const input = $('custom-tag-input');
-  const tag   = input.value.trim().toLowerCase();
+  const tag = input.value.trim().toLowerCase();
   if (tag && !AVAILABLE_TAGS.find(t => t.key === tag)) {
     customTags.add(tag);
     selectedTags.add(tag);
@@ -471,14 +470,15 @@ async function openEditModal(modelId) {
 
   try {
     const model = await apiFetch(`/api/models/${modelId}`);
-    $('form-model-id').value  = model._id;
-    $('form-name').value      = model.name      || '';
-    $('form-supplier').value  = model.supplier  || '';
-    $('form-context').value   = model.context   || '';
-    $('form-provider').value  = model.provider  || '';
-    $('form-model').value     = model.model     || '';
-    $('form-base-url').value  = model.base_url  || '';
-    $('form-api-key').value   = model.api_key   || '';
+    $('form-model-id').value = model._id;
+    $('form-display-id').value = model.display_id || '';
+    $('form-name').value = model.name || '';
+    $('form-supplier').value = model.supplier || '';
+    $('form-context').value = model.context || '';
+    $('form-provider').value = model.provider || '';
+    $('form-model').value = model.model || '';
+    $('form-base-url').value = model.base_url || '';
+    $('form-api-key').value = model.api_key || '';
 
     // Restore tags
     const existing = (model.tags || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -529,15 +529,16 @@ $('model-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('form-error').style.display = 'none';
 
-  const modelId   = $('form-model-id').value;
-  const name      = $('form-name').value.trim();
-  const supplier  = $('form-supplier').value.trim();
-  const context   = $('form-context').value.trim();
-  const provider  = $('form-provider').value.trim();
+  const modelId = $('form-model-id').value;
+  const displayId = $('form-display-id').value.trim();
+  const name = $('form-name').value.trim();
+  const supplier = $('form-supplier').value.trim();
+  const context = $('form-context').value.trim();
+  const provider = $('form-provider').value.trim();
   const modelName = $('form-model').value.trim();
-  const apiKey    = $('form-api-key').value.trim();
-  const baseUrl   = $('form-base-url').value.trim();
-  const tags      = [...selectedTags].sort().join(',');
+  const apiKey = $('form-api-key').value.trim();
+  const baseUrl = $('form-base-url').value.trim();
+  const tags = [...selectedTags].sort().join(',');
 
   if (!name || !provider || !modelName) {
     const errEl = $('form-error');
@@ -546,7 +547,7 @@ $('model-form').addEventListener('submit', async (e) => {
     return;
   }
 
-  const payload = { name, provider, model: modelName, api_key: apiKey, base_url: baseUrl, supplier, context, tags };
+  const payload = { display_id: displayId, name, provider, model: modelName, api_key: apiKey, base_url: baseUrl, supplier, context, tags };
   const saveBtn = $('btn-save');
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
@@ -582,7 +583,7 @@ $('modal-overlay').addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if ($('modal-overlay').style.display !== 'none')   closeModal();
+    if ($('modal-overlay').style.display !== 'none') closeModal();
     if ($('confirm-overlay').style.display !== 'none') {
       pendingDeleteId = null;
       $('confirm-overlay').style.display = 'none';
@@ -614,7 +615,7 @@ function openCompareView() {
   if (filterBar) filterBar.style.display = 'none';
   const tableWrapper = document.querySelector('.table-wrapper');
   if (tableWrapper) tableWrapper.style.display = 'none';
-  
+
   $('comparison-view').style.display = 'block';
   renderComparisonView();
 }
@@ -624,16 +625,16 @@ function closeCompareView() {
   if (filterBar) filterBar.style.display = 'flex';
   const tableWrapper = document.querySelector('.table-wrapper');
   if (tableWrapper) tableWrapper.style.display = 'block';
-  
+
   $('comparison-view').style.display = 'none';
 }
 
 function renderComparisonView() {
   const container = $('compare-container');
   container.innerHTML = '';
-  
+
   const selectedModels = allModels.filter(m => selectedForCompare.has(m._id));
-  
+
   selectedModels.forEach(model => {
     const col = el('div', 'compare-column');
     col.innerHTML = `

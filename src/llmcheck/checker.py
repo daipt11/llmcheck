@@ -137,7 +137,7 @@ def run_list(models, verbose=False):
     
     for m in models:
         row_data = [
-            m.get("_id", ""),
+            m.get("display_id") or m.get("_id", ""),
             m.get("name", ""),
             m.get("tags", ""),
             m.get("context", "-"),

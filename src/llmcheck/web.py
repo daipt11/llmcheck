@@ -35,6 +35,7 @@ class ModelCreate(BaseModel):
     supplier: str = ""
     context: str = ""
     tags: str = ""
+    display_id: str = ""
 
 
 class ModelUpdate(BaseModel):
@@ -46,6 +47,7 @@ class ModelUpdate(BaseModel):
     supplier: str = ""
     context: str = ""
     tags: str = ""
+    display_id: str = ""
 
 
 # ── REST endpoints ────────────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ def api_add_model(body: ModelCreate):
         supplier=body.supplier or None,
         context=body.context or None,
         tags=body.tags or None,
+        display_id=body.display_id or None,
     )
     # Return the newly-added model
     models = load_models()
@@ -113,6 +116,8 @@ def api_edit_model(model_id: str, body: ModelUpdate):
         updates["api_key"] = body.api_key
     if body.base_url is not None:
         updates["base_url"] = body.base_url if body.base_url.lower() != "none" else ""
+    if body.display_id is not None:
+        updates["display_id"] = body.display_id
 
     if not edit_model(model_id, updates):
         raise HTTPException(status_code=500, detail="Failed to update model")
