@@ -1,0 +1,31 @@
+# systemd user unit for the llmcheck web dashboard.
+#
+# Install (per-user, no root):
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/llmcheck-web.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now llmcheck-web
+#
+# Logs:    journalctl --user -u llmcheck-web -f
+# Restart: systemctl --user restart llmcheck-web
+#
+# This replaces the old `nohup ... > runtime.log & echo $! > pid` pattern:
+# systemd handles the pidfile, restart-on-crash, and logging for you.
+#
+# Binds to 127.0.0.1 by default (the API serves unmasked API keys). To expose
+# on your network, change ExecStart to add `--host 0.0.0.0` — only on a trusted
+# network, ideally behind an authenticating reverse proxy.
+
+[Unit]
+Description=llmcheck web dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/llmcheck web --port 6565
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

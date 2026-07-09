@@ -5,6 +5,7 @@ from rich.prompt import Prompt
 
 from .config import load_models, add_model, remove_model, edit_model, CONFIG_FILE
 from .checker import run_check, run_list
+from .util import mask_key
 
 console = Console()
 
@@ -55,6 +56,15 @@ def prompt_tags(current_tags=None):
 
     return ",".join(sorted(selected))
 
+def _resolve(models, identifier):
+    """Find a model by its internal _id or its custom display_id."""
+    ident = str(identifier)
+    return next(
+        (m for m in models if m.get("_id") == ident or m.get("display_id") == ident),
+        None,
+    )
+
+
 def cmd_add(args):
     console.print(f"[bold cyan]Adding a new model to {CONFIG_FILE}[/bold cyan]")
     try:
@@ -78,8 +88,7 @@ def cmd_add(args):
                 suggested_base_url = m.get("base_url")
 
         if suggested_key:
-            display_key = f"{suggested_key[:4]}...{suggested_key[-4:]}" if len(suggested_key) > 8 else "***"
-            api_key = input(f"Enter API Key [{display_key}]: ").strip()
+            api_key = input(f"Enter API Key [{mask_key(suggested_key)}]: ").strip()
             if not api_key:
                 api_key = suggested_key
         else:
@@ -106,7 +115,7 @@ def cmd_add(args):
 def cmd_show(args):
     identifier = str(args.identifier)
     models = load_models()
-    target = next((m for m in models if m.get("_id") == identifier), None)
+    target = _resolve(models, identifier)
 
     if not target:
         console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
@@ -141,7 +150,8 @@ def cmd_rm(args):
         console.print("[red]Error: You must provide an ID to remove.[/red]")
         sys.exit(1)
 
-    if remove_model(identifier):
+    target = _resolve(load_models(), identifier)
+    if target and remove_model(target["_id"]):
         console.print(f"[green]Successfully removed model '{identifier}'.[/green]")
     else:
         console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
@@ -149,11 +159,7 @@ def cmd_rm(args):
 def cmd_edit(args):
     identifier = args.identifier
     models = load_models()
-    target_model = None
-    for m in models:
-        if m.get("_id") == str(identifier):
-            target_model = m
-            break
+    target_model = _resolve(models, identifier)
 
     if not target_model:
         console.print(f"[red]Error: Model with ID '{identifier}' not found.[/red]")
@@ -175,7 +181,7 @@ def cmd_edit(args):
 
         # Mask API key for display
         current_key = target_model.get('api_key', '')
-        display_key = f"{current_key[:4]}...{current_key[-4:]}" if len(current_key) > 8 else "***" if current_key else "None"
+        display_key = mask_key(current_key) if current_key else "None"
         api_key = input(f"Enter API Key [{display_key}]: ").strip()
 
         model_name = input(f"Enter Model Name [{target_model.get('model', '')}]: ").strip()
@@ -197,7 +203,7 @@ def cmd_edit(args):
             else:
                 updates['base_url'] = base_url
 
-        if edit_model(identifier, updates):
+        if edit_model(target_model["_id"], updates):
             console.print(f"[green]Successfully updated model '{identifier}'.[/green]")
         else:
             console.print(f"[red]Failed to update model '{identifier}'.[/red]")
@@ -213,16 +219,23 @@ def cmd_web(args):
         sys.exit(1)
 
     port = args.port
-    console.print(f"[bold green]Starting llmcheck Web UI at http://localhost:{port}[/bold green]")
+    host = args.host
+    if host not in ("127.0.0.1", "localhost"):
+        console.print(
+            f"[bold red]WARNING:[/bold red] binding to {host} exposes the API — which serves "
+            "unmasked API keys — to your network. Use only on trusted networks."
+        )
+    console.print(f"[bold green]Starting llmcheck Web UI at http://{host}:{port}[/bold green]")
     console.print("[dim]Press Ctrl+C to stop.[/dim]")
-    uvicorn.run("llmcheck.web:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("llmcheck.web:app", host=host, port=port, reload=False)
 
 
 def cmd_list(args):
     models = load_models()
 
     if getattr(args, "ids", None):
-        models = [m for m in models if m.get("_id") in args.ids]
+        wanted = set(args.ids)
+        models = [m for m in models if m.get("_id") in wanted or m.get("display_id") in wanted]
 
     if args.provider:
         models = [m for m in models if m.get("provider", "").lower() == args.provider.lower()]
@@ -257,9 +270,12 @@ def cmd_check(args):
 
 def cmd_model(args):
     models = load_models()
-    targets = [str(t).lower() for t in args.identifiers]
+    targets = {str(t) for t in args.identifiers}
 
-    models_to_check = [m for m in models if m.get("_id") in targets]
+    models_to_check = [
+        m for m in models
+        if m.get("_id") in targets or (m.get("display_id") and m.get("display_id") in targets)
+    ]
 
     if not models_to_check:
         console.print(f"[yellow]No models found with IDs: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
@@ -314,6 +330,7 @@ def main():
     # Web command
     parser_web = subparsers.add_parser("web", help="Start the web UI dashboard")
     parser_web.add_argument("-p", "--port", type=int, default=6565, help="Port to run the web UI on (default: 6565)")
+    parser_web.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1; use 0.0.0.0 to expose on your network)")
     parser_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args()

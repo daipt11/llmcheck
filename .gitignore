@@ -128,3 +128,11 @@ cython_debug/
 # IDEs
 .idea/
 .vscode/
+
+# Agents
+.agents
+skills-lock.json
+
+# Runtime artifacts (web server)
+pid
+runtime.log

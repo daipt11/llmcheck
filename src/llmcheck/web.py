@@ -1,21 +1,15 @@
-import asyncio
 import json
 import queue
 import threading
-import time
 from pathlib import Path
 
-import litellm
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .config import add_model, edit_model, load_models, remove_model
-from .checker import check_single_model
-
-litellm.suppress_debug_info = True
-litellm.drop_params = True
+from .checker import PING_MESSAGES, check_single_model
 
 app = FastAPI(title="llmcheck Web UI")
 
@@ -136,16 +130,8 @@ def api_remove_model(model_id: str):
 # ── SSE check endpoint ────────────────────────────────────────────────────────
 
 
-def _build_display_key(api_key: str) -> str:
-    if not api_key:
-        return "-"
-    return f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "***"
-
-
 def _run_checks_threaded(models_to_check: list, result_queue: queue.Queue):
     """Run checks in background threads, one per supplier/provider group."""
-    messages = [{"role": "user", "content": "Ping. Respond with 'pong' only."}]
-
     groups: dict[str, list] = {}
     for m in models_to_check:
         key = str(m.get("supplier") or m.get("provider") or m.get("_id")).strip().lower()
@@ -153,8 +139,7 @@ def _run_checks_threaded(models_to_check: list, result_queue: queue.Queue):
 
     def check_group(group):
         for m in group:
-            result = check_single_model(m, messages, verbose=True)
-            result_queue.put(result)
+            result_queue.put(check_single_model(m, PING_MESSAGES, verbose=True))
 
     threads = [threading.Thread(target=check_group, args=(g,), daemon=True) for g in groups.values()]
     for t in threads:
@@ -201,20 +186,18 @@ def _sse_check(models: list) -> StreamingResponse:
             if result is None:
                 break
 
-            model_id, name, tags, context, supplier, provider, display_key, model_name, status, latency_str, error_msg = result
-
             payload = {
-                "id": model_id,
-                "name": name,
-                "tags": tags,
-                "context": context,
-                "supplier": supplier,
-                "provider": provider,
-                "api_key": display_key,
-                "model": model_name,
-                "status": "ok" if status == "✅" else "error",
-                "latency": latency_str,
-                "error": error_msg,
+                "id": result["id"],
+                "name": result["name"],
+                "tags": result["tags"],
+                "context": result["context"],
+                "supplier": result["supplier"],
+                "provider": result["provider"],
+                "api_key": result["api_key"],
+                "model": result["model"],
+                "status": "ok" if result["status"] == "✅" else "error",
+                "latency": result["latency"],
+                "error": result["error"],
             }
             yield f"data: {json.dumps(payload)}\n\n"
             received += 1

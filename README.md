@@ -141,6 +141,26 @@ Remove a model from the config.
 llmcheck rm 3
 ```
 
+`show`, `edit`, `rm`, and `model` accept either the internal ID or a custom Display ID.
+
+---
+
+### `llmcheck web`
+Start the local web dashboard.
+
+```bash
+llmcheck web                 # http://127.0.0.1:6565
+llmcheck web -p 8080         # custom port
+llmcheck web --host 0.0.0.0  # expose on your network (see warning below)
+```
+
+> ⚠️ **Security:** the dashboard API returns **unmasked API keys** to any client
+> that can reach it. It binds to `127.0.0.1` by default. Only pass `--host 0.0.0.0`
+> on a trusted network, ideally behind an authenticating reverse proxy.
+
+For a persistent, auto-restarting service, use the provided systemd user unit:
+[`deploy/llmcheck-web.service`](deploy/llmcheck-web.service).
+
 ---
 
 ## Tags
@@ -182,6 +202,21 @@ MODEL_1_TAGS="general,coding"
 - [litellm](https://github.com/BerriAI/litellm) — unified LLM API client
 - [rich](https://github.com/Textualize/rich) — terminal formatting
 - [python-dotenv](https://github.com/theskumar/python-dotenv) — config parsing
+- [fastapi](https://fastapi.tiangolo.com/) + [uvicorn](https://www.uvicorn.org/) — web dashboard
+
+The config file `~/.llmcheck_env` holds your API keys and is written with
+owner-only permissions (`0600`). Writes are atomic and file-locked, so the CLI
+and web UI can safely run at the same time.
+
+---
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest        # run the test suite
+ruff check .  # lint
+```
 
 ---
 
