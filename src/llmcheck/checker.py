@@ -35,7 +35,8 @@ def _is_transient(exc) -> bool:
 def _result(config, status, latency, error_msg):
     latency_str = f"{latency:.2f}" if status == "✅" else "-"
     return {
-        "id": config.get("display_id") or config.get("_id", ""),
+        "id": config.get("_id", ""),
+        "display_id": config.get("display_id", ""),
         "name": config.get("name", "Unknown"),
         "tags": config.get("tags", ""),
         "context": config.get("context", "-"),
@@ -89,7 +90,7 @@ def check_group(group_models, messages, verbose, result_queue):
 
 def _row(r):
     return (
-        r["id"], r["name"], r["tags"], r["context"], r["supplier"],
+        r.get("display_id") or r["id"], r["name"], r["tags"], r["context"], r["supplier"],
         r["provider"], r["api_key"], r["model"], r["status"], r["latency"], r["error"],
     )
 
