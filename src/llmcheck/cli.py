@@ -281,7 +281,7 @@ def cmd_model(args):
         console.print(f"[yellow]No models found with IDs: {', '.join(args.identifiers)}. Use 'llmcheck list' to see available models.[/yellow]")
         return
 
-    run_check(models_to_check, verbose=args.verbose)
+    run_check(models_to_check, verbose=args.verbose, compact=True)
 
 def main():
     parser = argparse.ArgumentParser(description="LLM API Health Check CLI")

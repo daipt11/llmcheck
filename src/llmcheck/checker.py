@@ -95,6 +95,13 @@ def _row(r):
     )
 
 
+def _row_compact(r):
+    return (
+        r.get("display_id") or r["id"], r["name"], r["supplier"],
+        r["status"], r["latency"], r["error"],
+    )
+
+
 def _group_by_supplier(models):
     groups = {}
     for m in models:
@@ -103,7 +110,7 @@ def _group_by_supplier(models):
     return groups
 
 
-def run_check(models_to_check, verbose=False):
+def run_check(models_to_check, verbose=False, compact=False):
     if not models_to_check:
         console.print("[yellow]No models found to check.[/yellow]")
         return
@@ -111,16 +118,19 @@ def run_check(models_to_check, verbose=False):
     table = Table(title="LLM API Health Check Results")
     table.add_column("ID", style="bold green", justify="right")
     table.add_column("Name", style="cyan")
-    table.add_column("Tags", style="yellow")
-    table.add_column("Context", style="magenta")
+    if not compact:
+        table.add_column("Tags", style="yellow")
+        table.add_column("Context", style="magenta")
     table.add_column("Supplier", style="cyan")
-    table.add_column("Provider/Compatible", style="magenta")
-    table.add_column("API Key", style="dim")
-    table.add_column("Model", style="blue")
+    if not compact:
+        table.add_column("Provider/Compatible", style="magenta")
+        table.add_column("API Key", style="dim")
+        table.add_column("Model", style="blue")
     table.add_column("Status", justify="center")
     table.add_column("Latency (s)", justify="right")
     table.add_column("Error", style="red", max_width=None if verbose else 40)
 
+    build_row = _row_compact if compact else _row
     groups = _group_by_supplier(models_to_check)
     result_queue = queue.Queue()
 
@@ -131,7 +141,7 @@ def run_check(models_to_check, verbose=False):
                 executor.submit(check_group, group_models, PING_MESSAGES, verbose, result_queue)
 
             for _ in range(len(models_to_check)):
-                table.add_row(*_row(result_queue.get()))
+                table.add_row(*build_row(result_queue.get()))
 
 
 def run_list(models, verbose=False):
