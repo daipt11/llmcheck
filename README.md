@@ -8,9 +8,11 @@ A CLI tool to manage and health-check your LLM API configurations — supports m
 - ⚡ **Parallel execution** — models from different suppliers run concurrently
 - 🔁 **Auto retry** — retries once after 5s on failure before marking as error
 - 🏷️ **Multi-tag system** — label models with multiple tags (reasoning, coding, agent, etc.)
-- 🔍 **Filter** by provider, supplier, or tag
-- 📋 **Rich table output** with latency, status, and masked API keys
+- 🔍 **Filter** by provider, supplier, or tag, and **sort** by name, supplier, or context window
+- 📋 **Rich table output** with latency, status, context window, and masked API keys
+- 🆔 **Custom Display IDs** — address models by your own IDs alongside internal ones
 - 🛠️ Full **CRUD** for model configs (add, edit, rm, show, list)
+- 🌐 **Web dashboard** for browsing and health-checking models in the browser
 - 🌐 **litellm**-powered — works with OpenAI, Anthropic, Google, Azure, Groq, and 100+ providers
 
 ---
@@ -59,6 +61,7 @@ Interactively add a new model configuration. Prompts for:
 | Name | Display name (e.g., `OpenAI GPT-4o`) |
 | Tags | Multi-select from tag list |
 | Supplier | API provider/reseller (e.g., `azure`, `groq`) |
+| Context Window | Optional context size (e.g., `128k`) |
 | Provider/Compatible | litellm provider prefix (e.g., `openai`, `gemini`) |
 | API Key | Auto-suggested from existing models with same supplier |
 | Model | Model identifier (e.g., `gpt-4o`, `claude-3-5-sonnet`) |
@@ -71,9 +74,12 @@ Display all configured models in a table.
 
 ```bash
 llmcheck list                   # all models
+llmcheck list 1 2 3             # only the given IDs (internal or Display ID)
 llmcheck list -p openai         # filter by provider
 llmcheck list -s groq           # filter by supplier
 llmcheck list -t coding         # filter by tag
+llmcheck list --sort name       # sort by name (or: supplier, context)
+llmcheck list -v                # verbose: show full model information
 ```
 
 ---
@@ -94,6 +100,7 @@ llmcheck show 1
 │ Provider/Compatible  openai                             │
 │         API Key  sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx       │
 │           Model  gpt-4o                                 │
+│         Context  128k                                   │
 │        Base URL  -                                      │
 ╰─────────────────────────────────────────────────────────╯
 ```
@@ -193,6 +200,10 @@ MODEL_1_PROVIDER="openai"
 MODEL_1_MODEL="gpt-4o"
 MODEL_1_API_KEY="sk-..."
 MODEL_1_TAGS="general,coding"
+MODEL_1_SUPPLIER="azure"
+MODEL_1_CONTEXT="128k"
+MODEL_1_BASE_URL=""
+MODEL_1_DISPLAY_ID=""
 ```
 
 ---
